@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ "$1" = "x86_64-elf" ]; then
+    echo qemu-system-x86_64 -machine type=pc-i440fx-3.1
+elif [ "$1" = "i686-elf" ]; then
+    echo qemu-system-i386
+else
+    >&2 echo "unknown target $1"
+    exit 1
+fi
+
+
