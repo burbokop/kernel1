@@ -17,14 +17,27 @@ project(kernel1
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG v0.3 # Optionally specify a commit hash, version tag or branch here
+)
+FetchContent_MakeAvailable(Corrosion)
+
+# Import targets defined in a package or workspace manifest `Cargo.toml` file
+corrosion_import_crate(
+    MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
+    FLAGS -Z build-std=core)
+
 add_executable(kernel1.bin
     ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s
     #${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/crt0.s
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp)
 
-target_link_options(kernel1.bin PUBLIC -nostdlib -lgcc -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
-
-
+target_link_libraries(kernel1.bin PUBLIC rkernel1)
+target_link_options(kernel1.bin PUBLIC -nostdlib -lgcc -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld -L ${CMAKE_CURRENT_LIST_DIR})
 
 add_custom_target(iso
     ALL

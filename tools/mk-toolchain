@@ -1,0 +1,53 @@
+#!/bin/ruby
+
+require 'optparse'
+
+targets = [
+    "x86_64-elf",
+    "i686-elf"
+]
+
+script_name = File.basename($0)
+
+options = {}
+OptionParser.new do |opt|
+    opt.banner = "Usage: #{script_name} [options]"
+    opt.on('--target TARGET') { |o| options[:target] = o }
+    opt.on('--prefix PREFIX') { |o| options[:prefix] = o }
+    opt.on_tail("-h", "--help", "Show this message") do
+        puts opt
+        puts "Targets:"
+        targets.each { |t| puts "\t#{t}" }
+        exit
+    end
+end.parse!
+
+raise OptionParser::MissingArgument, "--target" if options[:target].nil?
+raise OptionParser::MissingArgument, "--prefix" if options[:prefix].nil?
+
+if !targets.include? options[:target]
+    abort \
+        "#{$0}: error: target: #{options[:target]} unavailable\n" \
+        "Available targets:\n\t#{targets.join("\n\t")}"
+end
+
+if !File.exists? options[:prefix]
+    abort \
+        "#{$0}: error: #{options[:prefix]} not exists"
+end
+
+if !File.directory? options[:prefix]
+    abort \
+        "#{$0}: error: #{options[:prefix]} is not a directory"
+end
+
+puts "Generating toolchain for target #{options[:target]} with prefix: #{options[:prefix]}..."
+
+`cd #{__dir__}/replaceenv && cargo build --release`
+
+toolchain = `TARGET=#{options[:target]} PREFIX=#{options[:prefix]} #{__dir__}/replaceenv/target/release/replaceenv ./toolchain.template`
+
+toolchain_file = "#{options[:prefix]}/toolchain.cmake"
+File.write(toolchain_file, toolchain)
+
+puts "Toolchain successfully writen to #{toolchain_file}"

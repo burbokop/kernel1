@@ -1,0 +1,53 @@
+#!/bin/ruby
+
+require 'optparse'
+
+targets = [
+    "x86_64-elf",
+    "i686-elf"
+]
+
+script_name = File.basename($0)
+
+options = {}
+OptionParser.new do |opt|
+    opt.banner = "Usage: #{script_name} [options]"
+    opt.on('--target TARGET') { |o| options[:target] = o }
+    opt.on('-o', '--output DIR') { |o| options[:output] = o }
+    opt.on_tail("-h", "--help", "Show this message") do
+        puts opt
+        puts "Targets:"
+        targets.each { |t| puts "\t#{t}" }
+        exit
+    end
+end.parse!
+
+raise OptionParser::MissingArgument, "--target" if options[:target].nil?
+options[:output] = Dir.pwd if options[:output].nil?
+
+if !targets.include? options[:target]
+    abort \
+        "#{$0}: error: target: #{options[:target]} unavailable\n" \
+        "Available targets:\n\t#{targets.join("\n\t")}"
+end
+
+if !File.exists? options[:output]
+    abort \
+        "#{$0}: error: #{options[:output]} not exists"
+end
+
+if !File.directory? options[:output]
+    abort \
+        "#{$0}: error: #{options[:output]} is not a directory"
+end
+
+puts "Building container ..."
+`#{__dir__}/build.pl --target #{options[:target]}`
+
+image = File.read("/tmp/current_toolchain_img")
+
+puts "Running container #{image} ..."
+`docker run -d --rm --entrypoint sleep10 --name deploy_source #{image}`
+
+puts "Deploying content into #{options[:output]} ..."
+`docker cp deploy_source:/packages #{options[:output]}`

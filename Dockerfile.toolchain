@@ -1,0 +1,151 @@
+FROM debian:bookworm AS cc
+
+ARG GCC_VERSION
+
+RUN apt update && apt install -y \
+    gcc-12="${GCC_VERSION}*" \
+    g++-12="${GCC_VERSION}*" \
+    bison \
+    flex \
+    texinfo \
+    checkinstall \
+    libgmp3-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    libisl-dev \
+    wget
+
+FROM rust:1.69-bookworm as tools-build
+
+COPY ./tools/replaceenv /opt/replaceenv
+RUN cd /opt/replaceenv && cargo build --release
+
+FROM cc as binutils-build
+
+ARG BINUTILS_VERSION
+
+RUN wget https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.xz -O /tmp/binutils.tar.gz
+RUN tar -xvf /tmp/binutils.tar.gz -C /opt
+
+ARG PREFIX
+ARG TARGET
+
+RUN cd /opt && \
+    mkdir -p binutils-build && \
+    cd binutils-build && \
+    ../binutils-${BINUTILS_VERSION}/configure \
+        --prefix=$PREFIX \
+        --target=$TARGET \
+        --enable-interwork \
+        --enable-multilib \
+        --disable-nls \
+        --disable-werror
+
+RUN cd /opt/binutils-build && make all -j $(nproc)
+RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
+RUN cd /opt/binutils-build && checkinstall --install=no --fstrans=no --pkgname=binutils-$TARGET --pkgversion=${BINUTILS_VERSION} -y
+
+
+FROM cc as gcc-build
+
+ARG GCC_VERSION
+
+RUN wget ftp://ftp.lip6.fr/pub/gcc/releases/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz -O /tmp/gcc.tar.gz
+RUN tar -xvf /tmp/gcc.tar.gz -C /opt
+RUN cd /opt/gcc-${GCC_VERSION} && ./contrib/download_prerequisites
+
+#COPY --from=binutils-build /opt/binutils-build/*.deb /tmp
+#RUN dpkg -i /tmp/*.deb
+
+COPY --from=binutils-build /opt /tmp
+RUN cd /tmp/binutils-build && make install
+
+ARG PREFIX
+ARG TARGET
+
+RUN cd /opt && \
+    mkdir -p gcc-build && \
+    cd gcc-build && \
+    ../gcc-${GCC_VERSION}/configure \
+        --prefix=$PREFIX \
+        --target=$TARGET \
+        --disable-nls \
+        --enable-languages=c,c++ \
+        --without-headers \
+        --enable-interwork \
+        --enable-multilib \
+        --with-gmp=/usr \
+        --with-mpc=/opt/local \
+        --with-mpfr=/opt/local
+
+RUN cd /opt/gcc-build && make all-gcc -j $(nproc)
+RUN cd /opt/gcc-build && make all-target-libgcc -j $(nproc)
+#RUN cd /opt/gcc-build && make all-target-libstdc++-v3 -j $(nproc)
+
+COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /usr/bin
+COPY ./toolchain.cmake.template /opt
+COPY ./targets/$TARGET/target.json /opt/gcc-build/$PREFIX/llvm-target.json
+RUN replaceenv /opt/toolchain.cmake.template > /opt/gcc-build/$PREFIX/toolchain.cmake
+RUN echo .$PREFIX/toolchain.cmake >> /opt/gcc-build/include-list.txt && \
+    echo .$PREFIX/llvm-target.json >> /opt/gcc-build/include-list.txt
+
+RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
+RUN cd /opt/gcc-build && checkinstall \
+    --install=no \
+    --fstrans=no \
+    --pkgname=gcc-$TARGET \
+    --pkgversion=${GCC_VERSION} \
+    --include=include-list.txt \
+    -y make \
+        install-gcc \
+        install-target-libgcc
+        #\
+        #install-target-libstdc++-v3
+
+FROM cc as cmake-build
+
+RUN apt update && apt install -y \
+    libssl-dev
+
+ARG CMAKE_VERSION
+
+RUN wget https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz -O /tmp/cmake.tar.gz
+RUN tar -xvf /tmp/cmake.tar.gz -C /opt
+
+RUN cd /opt && \
+    mkdir -p cmake-build && \
+    cd cmake-build && \
+    ../CMake-${CMAKE_VERSION}/bootstrap
+
+RUN cd /opt/cmake-build && make -j $(nproc)
+RUN cd /opt/cmake-build && ./bin/cpack -G DEB
+
+FROM rust:1.69-bookworm
+
+RUN apt update && apt install -y \
+    grub \
+    grub-pc-bin \
+    xorriso \
+    libmpc3 \
+    libfl2 \
+    make \
+    git
+
+RUN rustup default nightly && \
+    rustup component add rust-src
+
+RUN mkdir /packages
+COPY --from=binutils-build /opt/binutils-build/*.deb /packages
+COPY --from=gcc-build /opt/gcc-build/*.deb /packages
+COPY --from=cmake-build /opt/cmake-build/*.deb /packages
+RUN dpkg -i /packages/*.deb
+
+ARG PREFIX
+ARG TARGET
+
+ENV ASM=${PREFIX}/bin/${TARGET}-as
+ENV CC=${PREFIX}/bin/${TARGET}-gcc
+ENV CXX=${PREFIX}/bin/${TARGET}-g++
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
+
+RUN echo "#!/bin/bash\nsleep 10\n" > /bin/sleep10 && chmod +x /bin/sleep10
