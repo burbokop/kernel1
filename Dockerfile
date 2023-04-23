@@ -6,7 +6,9 @@ COPY . /opt/kernel
 RUN cd /opt && \
     mkdir -p kernel-build && \
     cd kernel-build && \
-    cmake ../kernel
+    cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        ../kernel
 
 RUN cd /opt/kernel-build && make iso -j $(nproc)
 RUN cd /opt/kernel-build && cpack -G DEB

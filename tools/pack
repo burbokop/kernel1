@@ -1,26 +1,26 @@
 #!/bin/bash
 
+GREEN_CODE="32"
+GREEN="\e[${GREEN_CODE}m"
+BOLDGREEN="\e[1;${GREEN_CODE}m"
+ENDCOLOR="\e[0m"
+
 if [ ! -f "$1" ]; then
     >&2 echo "$1 does not exist."
     exit 1
 fi
 
-grub-file --is-x86-multiboot $1
-echo "multiboot: $? (0 -> true)"
-grub-file --is-x86-multiboot2 $1
-echo "multiboot2: $? (0 -> true)"
-
 if grub-file --is-x86-multiboot $1; then
-    echo "multiboot confirmed"
+    echo -e "${BOLDGREEN}Multiboot confirmed${ENDCOLOR}"
 elif grub-file --is-x86-multiboot2 $1; then
-    echo "multiboot confirmed (multiboot2)"
+    echo -e "${BOLDGREEN}Multiboot confirmed (multiboot2)${ENDCOLOR}"
 else
     >&2 echo "the file $1 is not multiboot"
     exit 2
 fi
 
-binname="$(basename -- $1)" 
-bindir="$(dirname -- $1)" 
+binname="$(basename -- $1)"
+bindir="$(dirname -- $1)"
 
 mkdir -p $bindir/isodir/boot/grub
 cp $1 $bindir/isodir/boot/$binname

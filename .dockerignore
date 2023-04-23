@@ -1,0 +1,9 @@
+/build
+/target
+
+/.vscode
+
+**/*.user
+**/*.lock
+
+**/*.a

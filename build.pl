@@ -9,11 +9,15 @@ my $script_dir = dirname(__FILE__);
 my $gcc_version = "12.2.0";
 my $binutils_version = "2.40";
 my $cmake_version = "3.26.3";
+my $openssl_version = "3.1.0";
 
 my $target;
+my $toolchain_only;
 
-GetOptions("target=s" => \$target)
-or die("Error in command line arguments\n");
+GetOptions(
+    'target=s' => \$target,
+    'toolchain-only' => \$toolchain_only,
+    ) or die("Error in command line arguments\n");
 
 if ($target eq "") {
     die("Error: target must be specified\n");
@@ -46,12 +50,17 @@ print "USE cmake $cmake_version.\n";
     --build-arg GCC_VERSION=$gcc_version \\
     --build-arg BINUTILS_VERSION=$binutils_version \\
     --build-arg CMAKE_VERSION=$cmake_version \\
+    --build-arg OPENSSL_VERSION=$openssl_version \\
     -t $toolchain_image \\
     $script_dir`;
 
-print "Building kernel for target $target as image $image.\n";
+unless ($toolchain_only) {
+    print "Building kernel for target $target as image $image.\n";
 
-`docker build \\
-    --build-arg TARGET=$target \\
-    -t $image \\
-    $script_dir`;
+    `docker build \\
+        --build-arg TARGET=$target \\
+        -t $image \\
+        $script_dir`;
+} else {
+    print "Skiping kernel build because of --toolchain-only flag specified\n";
+}

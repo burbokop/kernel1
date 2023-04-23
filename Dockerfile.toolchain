@@ -45,7 +45,6 @@ RUN cd /opt/binutils-build && make all -j $(nproc)
 RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
 RUN cd /opt/binutils-build && checkinstall --install=no --fstrans=no --pkgname=binutils-$TARGET --pkgversion=${BINUTILS_VERSION} -y
 
-
 FROM cc as gcc-build
 
 ARG GCC_VERSION
@@ -104,8 +103,19 @@ RUN cd /opt/gcc-build && checkinstall \
 
 FROM cc as cmake-build
 
-RUN apt update && apt install -y \
-    libssl-dev
+ARG OPENSSL_VERSION
+
+RUN wget https://github.com/openssl/openssl/archive/refs/tags/openssl-${OPENSSL_VERSION}.tar.gz -O /tmp/openssl.tar.gz
+RUN tar -xvf /tmp/openssl.tar.gz -C /opt
+
+RUN cd /opt && \
+    ls -l && \
+    mkdir -p openssl-build && \
+    cd openssl-build && \
+    ../openssl-openssl-${OPENSSL_VERSION}/Configure -static --no-shared
+
+RUN cd /opt/openssl-build && make -j $(nproc)
+RUN cd /opt/openssl-build && make install
 
 ARG CMAKE_VERSION
 
@@ -128,8 +138,7 @@ RUN apt update && apt install -y \
     xorriso \
     libmpc3 \
     libfl2 \
-    make \
-    git
+    make
 
 RUN rustup default nightly && \
     rustup component add rust-src

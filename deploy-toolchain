@@ -13,6 +13,7 @@ options = {}
 OptionParser.new do |opt|
     opt.banner = "Usage: #{script_name} [options]"
     opt.on('--target TARGET') { |o| options[:target] = o }
+    opt.on('--install PACKAGE PREFIX') { |o| options[:install] = o }
     opt.on('-o', '--output DIR') { |o| options[:output] = o }
     opt.on_tail("-h", "--help", "Show this message") do
         puts opt
@@ -27,7 +28,7 @@ options[:output] = Dir.pwd if options[:output].nil?
 
 if !targets.include? options[:target]
     abort \
-        "#{$0}: error: target: #{options[:target]} unavailable\n" \
+        "#{$0}: error: target #{options[:target]} unavailable\n" \
         "Available targets:\n\t#{targets.join("\n\t")}"
 end
 
@@ -42,12 +43,21 @@ if !File.directory? options[:output]
 end
 
 puts "Building container ..."
-`#{__dir__}/build.pl --target #{options[:target]}`
+`#{__dir__}/build.pl --target #{options[:target]} --toolchain-only`
 
 image = File.read("/tmp/current_toolchain_img")
 
 puts "Running container #{image} ..."
 `docker run -d --rm --entrypoint sleep10 --name deploy_source #{image}`
 
-puts "Deploying content into #{options[:output]} ..."
+puts "Deploying content into #{options[:output]}/packages ..."
 `docker cp deploy_source:/packages #{options[:output]}`
+
+if !options[:install].nil?
+    package_to_install = `realpath #{options[:output]}/packages/#{options[:install]}*.deb`.strip!
+    if !File.exists? package_to_install
+        abort "error: package with prefix #{options[:install]} (#{package_to_install}) not found"
+    end
+    puts "Installing package #{package_to_install} ..."
+    puts `sudo dpkg -i #{package_to_install}`
+end
