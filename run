@@ -1,14 +1,84 @@
-#!/bin/bash
+#!ruby
 
-./build.pl $1 $2 $3
+require 'optparse'
+require 'tmpdir'
 
-xhost +local:*
+targets = [
+    "x86_64-elf",
+    "i686-elf"
+]
 
-docker run \
-    --device=/dev/kvm:/dev/kvm \
-    --device=/dev/net/tun:/dev/net/tun \
-    -v /tmp/.X11-unix/:/tmp/.X11-unix/ \
-    -e DISPLAY=${DISPLAY} \
-    --rm \
-    -it \
-    `cat /tmp/current_img`
+script_name = File.basename($0)
+
+options = {
+    toolchain: false,
+    shell: ''
+}
+
+OptionParser.new do |opt|
+    opt.banner = "Usage: #{script_name} [options]"
+    opt.on('--target TARGET') { |o| options[:target] = o }
+    opt.on('-tc', '--toolchain', 'Run toolchain instead of kernel') do
+        options[:toolchain] = true
+        options[:shell] = '--entrypoint bash'
+    end
+    opt.on('-s', '--shell', 'Run shell in conteiner') do
+        options[:shell] = '--entrypoint bash'
+    end
+    opt.on_tail("-h", "--help", "Show this message") do
+        puts opt
+        puts "Targets:"
+        targets.each { |t| puts "\t#{t}" }
+        exit
+    end
+end.parse!
+
+raise OptionParser::MissingArgument, "--target" if options[:target].nil?
+
+if !targets.include? options[:target]
+    abort \
+        "#{$0}: error: target #{options[:target]} unavailable\n" \
+        "Available targets:\n\t#{targets.join("\n\t")}"
+end
+
+build_exe = "perl #{File.join(__dir__, "build.pl")}"
+
+image = nil
+build_ok = false
+if options[:toolchain]
+    build_ok = system("#{build_exe} --target #{options[:target]} --toolchain-only")
+    image_path = File.join(Dir.tmpdir(), "current_toolchain_img");
+
+else
+    build_ok = system("#{build_exe} --target #{options[:target]}")
+    image_path = File.join(Dir.tmpdir(), "current_img")
+end
+
+if !build_ok
+    abort "#{$0}: error: can not run due to failed build. see error above"
+end
+
+if !File.exist? image_path
+    abort "#{$0}: error: file #{image_path} not exists"
+end
+
+image = File.read(image_path)
+
+puts "Running container #{image} ..."
+
+init_display = Etc.uname[:sysname] == "Linux" ? "xhost +local:* &&" : ""
+platform_specific_options = Etc.uname[:sysname] == "Linux" \
+    ? "\
+        -v /tmp/.X11-unix/:/tmp/.X11-unix/ \
+        -e DISPLAY=${DISPLAY} \
+        --device=/dev/kvm:/dev/kvm \
+        --device=/dev/net/tun:/dev/net/tun" \
+    : "-e DISPLAY=host.docker.internal:0.0"
+
+system("#{init_display} \
+    docker run \
+        --rm \
+        -it \
+        #{platform_specific_options} \
+        #{options[:shell]} \
+        #{image}")

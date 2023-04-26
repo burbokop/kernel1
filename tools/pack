@@ -1,12 +1,25 @@
 #!/bin/bash
 
+# first arg  - path to binary
+# second arg - path to grub cfg
+
 GREEN_CODE="32"
 GREEN="\e[${GREEN_CODE}m"
 BOLDGREEN="\e[1;${GREEN_CODE}m"
 ENDCOLOR="\e[0m"
 
+if [ -z "$1" ]; then
+    >&2 echo "$0: error: first argument missing"
+    exit 1
+fi
+
+if [ -z "$2" ]; then
+    >&2 echo "$0: error: second argument missing"
+    exit 1
+fi
+
 if [ ! -f "$1" ]; then
-    >&2 echo "$1 does not exist."
+    >&2 echo "$0: error: $1 does not exist."
     exit 1
 fi
 
@@ -15,7 +28,7 @@ if grub-file --is-x86-multiboot $1; then
 elif grub-file --is-x86-multiboot2 $1; then
     echo -e "${BOLDGREEN}Multiboot confirmed (multiboot2)${ENDCOLOR}"
 else
-    >&2 echo "the file $1 is not multiboot"
+    >&2 echo "$0: error: the file $1 is not multiboot"
     exit 2
 fi
 

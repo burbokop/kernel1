@@ -85,8 +85,12 @@ COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /usr/bin
 COPY ./toolchain.cmake.template /opt
 COPY ./targets/$TARGET/target.json /opt/gcc-build/$PREFIX/llvm-target.json
 RUN replaceenv /opt/toolchain.cmake.template > /opt/gcc-build/$PREFIX/toolchain.cmake
+COPY ./tools/choose-qemu /opt
+RUN echo "#/bin/bash\n`/opt/choose-qemu ${TARGET}` -kernel \$1" > /opt/gcc-build/$PREFIX/runq && chmod +x /opt/gcc-build/$PREFIX/runq
+
 RUN echo .$PREFIX/toolchain.cmake >> /opt/gcc-build/include-list.txt && \
-    echo .$PREFIX/llvm-target.json >> /opt/gcc-build/include-list.txt
+    echo .$PREFIX/llvm-target.json >> /opt/gcc-build/include-list.txt && \
+    echo .$PREFIX/runq >> /opt/gcc-build/include-list.txt
 
 RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
 RUN cd /opt/gcc-build && checkinstall \
@@ -100,6 +104,28 @@ RUN cd /opt/gcc-build && checkinstall \
         install-target-libgcc
         #\
         #install-target-libstdc++-v3
+
+FROM cc as gdb-build
+
+ARG GDB_VERSION
+
+RUN wget https://ftp.gnu.org/gnu/gdb/gdb-${GDB_VERSION}.tar.xz -O /tmp/gdb.tar.gz
+RUN tar -xvf /tmp/gdb.tar.gz -C /opt
+
+ARG PREFIX
+ARG TARGET
+
+RUN cd /opt && \
+    mkdir -p gdb-build && \
+    cd gdb-build && \
+    ../gdb-${GDB_VERSION}/configure \
+        --target=$TARGET \
+        --prefix=$PREFIX \
+        --disable-werror
+
+RUN cd /opt/gdb-build && make all-gdb
+RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
+RUN cd /opt/gdb-build && checkinstall --install=no --fstrans=no --pkgname=gdb-$TARGET --pkgversion=${GDB_VERSION} -y make install-gdb
 
 FROM cc as cmake-build
 
@@ -144,8 +170,10 @@ RUN rustup default nightly && \
     rustup component add rust-src
 
 RUN mkdir /packages
+COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /usr/bin
 COPY --from=binutils-build /opt/binutils-build/*.deb /packages
 COPY --from=gcc-build /opt/gcc-build/*.deb /packages
+COPY --from=gdb-build /opt/gdb-build/*.deb /packages
 COPY --from=cmake-build /opt/cmake-build/*.deb /packages
 RUN dpkg -i /packages/*.deb
 
@@ -158,3 +186,26 @@ ENV CXX=${PREFIX}/bin/${TARGET}-g++
 ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
 
 RUN echo "#!/bin/bash\nsleep 10\n" > /bin/sleep10 && chmod +x /bin/sleep10
+
+# GLIBC -------->>>>
+
+#RUN apt update && apt install -y \
+#    gawk \
+#    bison
+#
+#RUN cd /opt && git clone https://sourceware.org/git/glibc.git && cd glibc && git checkout release/2.37/master
+#
+#RUN cd /opt && \
+#    mkdir glibc-build && \
+#    cd glibc-build && \
+#    CC=$CC > configparms && \
+#    ../glibc/configure \
+#        --prefix=$PREFIX
+#
+#RUN cd /opt/glibc-build && make all
+#
+#RUN cd /opt/glibc-build && make all -j $(nproc)
+#RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
+#RUN cd /opt/glibc-build && checkinstall --install=no --fstrans=no --pkgname=binutils-$TARGET --pkgversion=1.0 -y
+
+# GLIBC <<<<--------

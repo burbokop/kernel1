@@ -27,7 +27,7 @@ RUN  dbus-uuidgen > /etc/machine-id
 
 ARG TARGET
 
-RUN echo `/opt/qemu ${TARGET}` -kernel /bin/kernel1.bin > /run-qemu
+RUN echo `/opt/qemu ${TARGET}` -kernel /bin/kernel1 > /run-qemu
 RUN chmod +x /run-qemu
 
 CMD /run-qemu

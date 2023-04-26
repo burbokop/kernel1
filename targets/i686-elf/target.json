@@ -8,5 +8,11 @@
     "arch": "x86",
     "os": "none",
     "disable-redzone": true,
-    "features": "-mmx,-sse,+soft-float"
+    "features": "-mmx,-sse,+soft-float",
+    "panic-strategy": "abort",
+    "post-link-args": {
+        "gcc": [
+            "-lc-ext"
+        ]
+    }
 }
