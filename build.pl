@@ -66,10 +66,12 @@ if (system("$build_env docker build \\
 unless ($toolchain_only) {
     print "Building kernel for target $target as image $image.\n";
 
-    system("$build_env docker build \\
+    if (system("$build_env docker build \\
         --build-arg TARGET=$target \\
         -t $image \\
-        $script_dir");
+        $script_dir") != 0) {
+        die("Error: Kernel build failed due to previous error\n");
+    }
 } else {
     print "Skiping kernel build because of --toolchain-only flag specified\n";
 }

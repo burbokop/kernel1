@@ -33,6 +33,8 @@ mod no_std {
 
 slint::include_modules!();
 
+mod fb;
+
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod platform;
 
@@ -75,10 +77,33 @@ pub fn diplay_slint() {
     ui.run().unwrap();
 }
 
+#[derive(Debug)]
+#[repr(C, align(4))]
+pub struct graphics_header {
+    flag0: u32,
+    w: u32,
+    h: u32,
+    bpp: u32,
+}
 
+#[derive(Debug)]
+#[repr(C, align(4))]
+pub struct multiboot_header {
+    magic: u32,
+    flags: u32,
+    checksum: u32,
+
+    flag0: u32,
+    flag1: u32,
+    flag2: u32,
+    flag3: u32,
+    flag4: u32,
+
+    graphics: graphics_header,
+}
 
 #[no_mangle]
-pub extern fn rust_main() {
+pub extern fn rust_main(header: multiboot_header) {
     {
         use core::mem::MaybeUninit;
         const HEAP_SIZE: usize = 1024 * 1024;
@@ -88,6 +113,8 @@ pub extern fn rust_main() {
 
     use core::fmt::Write;
     let mut host_stderr = cstd::Stdout::new();
+
+    writeln!(host_stderr, "header: {}", header).ok();
 
     let s = String::from("asasa");
     writeln!(host_stderr, "after string aloc: {}", s.as_str()).ok();

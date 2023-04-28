@@ -10,54 +10,65 @@ extern "C" {
     int memcmp(const void *s1, const void *s2, size_t n);
 }
 
-constexpr int pixelwidth = 1;
-constexpr int pitch = 320;
-
-    /* example for 320x200 VGA */
-void putpixel(int pos_x, int pos_y, unsigned char VGA_COLOR)
+struct graphics_header
 {
-    unsigned char *location = (unsigned char *) 0xA0000 + 320 * pos_y + pos_x;
-    *location = VGA_COLOR;
+    long flag0;
+    long w;
+    long h;
+    long bpp;
+} __attribute__ ((aligned (4)));
+
+struct multiboot_header {
+    long magic;
+    long flags;
+    long checksum;
+
+    long flag0;
+    long flag1;
+    long flag2;
+    long flag3;
+    long flag4;
+
+    graphics_header graphics;
+} __attribute__ ((aligned (4)));
+
+void* vga_addr(const graphics_header& graphics, int x, int y)
+{
+    if(graphics.bpp != 8) return nullptr;
+    return (unsigned char*) 0xA0000
+        + graphics.w * y
+        + graphics.bpp * x / 8;
 }
 
-static void fillrect(unsigned char *vram,
-                         unsigned char r,
-                         unsigned char g,
-                         unsigned char b,
-                         unsigned char w,
-                         unsigned char h)
+int main(multiboot_header header)
 {
-    unsigned char *where = vram;
-    int i, j;
 
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-                //putpixel(vram, 64 + j, 64 + i, (r << 16) + (g << 8) + b);
-                where[j * pixelwidth] = r;
-                where[j * pixelwidth + 1] = g;
-                where[j * pixelwidth + 2] = b;
+    puts("start");
+    printf("m:%d, f:%d, c:%d, w:%d, h:%d, b:%d",
+        header.magic,
+        header.flags,
+        header.checksum,
+        header.graphics.w,
+        header.graphics.h,
+        header.graphics.bpp);
+
+    rust_main();
+    /*
+    const auto a = aaa();
+
+    char buffer[256];
+
+    itoa(a, buffer, 10);
+
+    puts(buffer);
+    puts("asasasasas");
+    */
+
+    for (int y = 0; y < header.graphics.h; ++y) {
+        for (int x = 0; x < header.graphics.w; ++x) {
+            *(unsigned char*) vga_addr(header.graphics, x, y) = x + y;
         }
-        where += pitch;
     }
-}
 
-int main()
-{
-        rust_main();
-        const auto a = aaa();
-
-        char buffer[256];
-
-        itoa(a, buffer, 10);
-
-        puts(buffer);
-        puts("asasasasas");
-
-        //putpixel(0, 0, VGA_COLOR_BLUE);
-        //putpixel(1, 1, VGA_COLOR_CYAN);
-        //putpixel(2, 2, VGA_COLOR_RED);
-        //putpixel(4, 4, VGA_COLOR_MAGENTA);
-        //putpixel(5, 5, VGA_COLOR_LIGHT_RED);
-
-        return 0;
+    return 0;
 }

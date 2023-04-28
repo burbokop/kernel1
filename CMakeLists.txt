@@ -41,8 +41,6 @@ corrosion_import_crate(
     MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
     FLAGS ${CORROSION_FLAGS})
 
-#target_link_libraries(rkernel1 INTERFACE cstd)
-
 add_executable(kernel1)
 
 target_sources(kernel1 PRIVATE
@@ -73,7 +71,7 @@ if (NOT (WIN32 OR UNIX))
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/program
         BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/program
         DEPENDS kernel1)
-    install(FILES ${CMAKE_BINARY_DIR}/kernel.iso DESTINATION bin)
+    install(FILES ${CMAKE_BINARY_DIR}/kernel1.iso DESTINATION bin)
 endif()
 
 # Package Generator  #######################################################
