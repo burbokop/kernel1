@@ -1,11 +1,11 @@
-#!ruby
+#!/bin/ruby
 
 require 'optparse'
 require 'tmpdir'
 
 targets = [
     "x86_64-elf",
-    "i686-elf"
+    "i686-elf",
 ]
 
 script_name = File.basename($0)

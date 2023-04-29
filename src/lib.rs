@@ -12,6 +12,7 @@ use slint::{Timer, TimerMode};
 
 mod cstd;
 mod hw;
+mod panic;
 
 #[global_allocator]
 //static GLOBAL: MyAllocator = MyAllocator;
@@ -33,15 +34,19 @@ mod no_std {
 
 slint::include_modules!();
 
+
+//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod fb;
-
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod platform;
+mod surfaces;
 
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 pub fn init_platform() {
-    // TODO
-    //slint::platform::set_platform(Box::<Platform>::default()).unwrap();
+    use platform::*;
+    let surface = unsafe {
+        surfaces::vga320x200_256c::Surface::new()
+    };
+    slint::platform::set_platform(Box::new(Platform::new(surface))).unwrap();
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
@@ -53,7 +58,7 @@ pub fn init_platform() {
 }
 
 pub fn diplay_slint() {
-    init_platform();
+    //init_platform();
 
     let ui = Demo::new().unwrap();
 
@@ -102,8 +107,13 @@ pub struct multiboot_header {
     graphics: graphics_header,
 }
 
+
+
 #[no_mangle]
 pub extern fn rust_main(header: multiboot_header) {
+
+    use core::fmt::Write;
+
     {
         use core::mem::MaybeUninit;
         const HEAP_SIZE: usize = 1024 * 1024;
@@ -111,10 +121,9 @@ pub extern fn rust_main(header: multiboot_header) {
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
 
-    use core::fmt::Write;
     let mut host_stderr = cstd::Stdout::new();
 
-    writeln!(host_stderr, "header: {}", header).ok();
+    writeln!(host_stderr, "header: {:?}", header).ok();
 
     let s = String::from("asasa");
     writeln!(host_stderr, "after string aloc: {}", s.as_str()).ok();
@@ -129,21 +138,3 @@ pub extern fn rust_main(header: multiboot_header) {
 #[no_mangle]
 pub extern fn aaa() -> usize { 1234 }
 
-
-#[cfg(not(test))]
-mod panic {
-    use core::panic::PanicInfo;
-    use crate::cstd::Stderr;
-
-    #[panic_handler]
-    fn panic(info: &PanicInfo) -> ! {
-        use core::fmt::Write;
-        let mut host_stderr = Stderr::new();
-        writeln!(host_stderr, "{}", info).ok();
-        loop {}
-    }
-
-    #[lang = "eh_personality"]
-    #[no_mangle]
-    pub extern fn eh_personality() {}
-}

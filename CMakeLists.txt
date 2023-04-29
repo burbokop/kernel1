@@ -47,9 +47,12 @@ target_sources(kernel1 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp)
 target_link_libraries(kernel1 PUBLIC rkernel1)
 
+target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
+
 if (NOT (WIN32 OR UNIX))
     target_sources(kernel1 PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s)
+        ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s
+        ${CMAKE_CURRENT_LIST_DIR}/src/panic.cpp)
 
     target_link_libraries(kernel1 PUBLIC __cstd gcc)
     target_link_options(kernel1 PUBLIC

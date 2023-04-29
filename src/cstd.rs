@@ -13,7 +13,7 @@ pub fn putchar(c: u8) -> u8 {
     unsafe { c::putchar(c as c_int) as u8 }
 }
 
-use core::{ffi::{c_void, c_int}, alloc::{GlobalAlloc, Layout}, fmt};
+use core::{ffi::{c_void, c_int, c_char}, alloc::{GlobalAlloc, Layout}, fmt, str::Bytes};
 
 struct Alloc;
 unsafe impl GlobalAlloc for Alloc {

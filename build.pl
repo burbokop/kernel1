@@ -23,8 +23,6 @@ GetOptions(
 
 if ($target eq "") {
     die("Error: target must be specified\n");
-} elsif ($target ne "x86_64-elf" && $target ne "i686-elf") {
-    die("Error: only x86_64-elf and i686-elf targets are available\n");
 }
 
 my $prefix = "/usr/sysroot-$target";

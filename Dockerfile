@@ -21,14 +21,14 @@ RUN apt update && apt install -y \
     genisoimage
 
 COPY ./tools/choose-qemu /opt/qemu
-COPY --from=kernel-build /tmp/binutils*.deb /tmp
+COPY --from=kernel-build /packages/binutils*.deb /tmp
 COPY --from=kernel-build /opt/kernel-build/*.deb /tmp
 RUN dpkg -i /tmp/*.deb
 RUN  dbus-uuidgen > /etc/machine-id
 
 ARG TARGET
 
-RUN echo `/opt/qemu ${TARGET}` -drive format=raw,file=/bin/kernel1.iso -d cpu_reset -monitor stdio > /run-qemu
+RUN echo `/opt/qemu ${TARGET}` -cdrom /bin/kernel1.iso -d cpu_reset -monitor stdio > /run-qemu
 RUN chmod +x /run-qemu
 
 CMD isoinfo -l -i /bin/kernel1.iso && /run-qemu

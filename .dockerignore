@@ -10,3 +10,6 @@
 
 /run
 /build.pl
+
+Dockerfile
+Dockerfile.*

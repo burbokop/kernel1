@@ -327,7 +327,7 @@ impl software_renderer::TargetPixel for SlintBltPixel {
         let gB = color.green as u16 * u8::MAX as u16 / color.alpha as u16;
         let bB = color.blue as u16 * u8::MAX as u16 / color.alpha as u16;
 
-        let u8maxsqr = u8::MAX as u16 * u8::MAX as u16; 
+        let u8maxsqr = u8::MAX as u16 * u8::MAX as u16;
 
         let aOut16 = aA as u16 + (aB as u16 * (u8::MAX - aA) as u16 / u8::MAX as u16);
         let rOut = (((rA as u16 * aA as u16 / u8::MAX as u16) + (rB as u16 * aB as u16 * (u8::MAX - aA) as u16 / u8maxsqr)) / aOut16) as u8;
@@ -336,13 +336,13 @@ impl software_renderer::TargetPixel for SlintBltPixel {
 
         let aOut = aOut16 as u8;
 
-        self.0 = 
+        self.0 =
             (aOut as u32) << 24 |
-            (rOut as u32) << 16 | 
-            (gOut as u32) << 8 | 
+            (rOut as u32) << 16 |
+            (gOut as u32) << 8 |
             (bOut as u32) << 0;
          */
-        // /* 
+        // /*
         let a = (u8::MAX - color.alpha) as u16;
 
         let alpha = (self.0 >> 24) as u8;
@@ -354,10 +354,10 @@ impl software_renderer::TargetPixel for SlintBltPixel {
         let red = (red as u16 * a / 255) as u8 + color.red;
         let green = (green as u16 * a / 255) as u8 + color.green;
         let blue = (blue as u16 * a / 255) as u8 + color.blue;
-        self.0 = 
+        self.0 =
             (alpha as u32) << 24 |
-            (red as u32) << 16 | 
-            (green as u32) << 8 | 
+            (red as u32) << 16 |
+            (green as u32) << 8 |
             (blue as u32) << 0;
         //    */
     }
@@ -365,8 +365,8 @@ impl software_renderer::TargetPixel for SlintBltPixel {
     fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
         SlintBltPixel(
             (0xff as u32) << 24 |
-            (red as u32) << 16 | 
-            (green as u32) << 8 | 
+            (red as u32) << 16 |
+            (green as u32) << 8 |
             (blue as u32) << 0
         )
     }
@@ -384,7 +384,7 @@ impl slint::platform::Platform for Platform {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
-        let (mut surface, window) = unsafe { 
+        let (mut surface, window) = unsafe {
             SDL_Init(SDL_INIT_EVERYTHING);
 
             let window = SDL_CreateWindow(
@@ -407,22 +407,12 @@ impl slint::platform::Platform for Platform {
         let mut window_visible = false;
         let mut should_exit = false;
 
-        use core::fmt::Write;
-        let mut host_stderr = Stdout::new();
-
-        let mut aaa = 0;
-        let mut bbb = 0;
-
         while !should_exit {
             if window_visible {
                 unsafe {
                     let mut w: i32 = 0;
-                    let mut h: i32 = 0;    
-                    writeln!(host_stderr, "SDL_GetWindowSize").ok();            
+                    let mut h: i32 = 0;
                     SDL_GetWindowSize(window, &mut w, &mut h);
-                    aaa += 1;
-                    writeln!(host_stderr, "{} ws: {}, {}, ss: {}, {}", aaa, w, h, surface.w, surface.h).ok();            
-
                     if surface.w != w || surface.h != h {
                         self.resize(&mut surface, window);
                     }
@@ -431,11 +421,7 @@ impl slint::platform::Platform for Platform {
             }
 
             let mut event: SDL_Event = unsafe { MaybeUninit::uninit().assume_init() };
-            writeln!(host_stderr, "before event").ok();            
             while unsafe { SDL_PollEvent(&mut event as *mut SDL_Event) != 0 } {
-                bbb += 1;
-                writeln!(host_stderr, "{} event", bbb).ok();            
-
                 match unsafe { transmute(event.type_) } {
                     SDL_EventType::SDL_FIRSTEVENT => todo!(),
                     SDL_EventType::SDL_QUIT => if !should_exit { panic!("SDL_QUIT event received but window should not exit") },
@@ -473,36 +459,36 @@ impl slint::platform::Platform for Platform {
                         })
                     },
                     SDL_EventType::SDL_KEYUP => unsafe {
-                        self.window.dispatch_event(slint::platform::WindowEvent::KeyReleased { 
+                        self.window.dispatch_event(slint::platform::WindowEvent::KeyReleased {
                             text: sdlsym_to_slint(event.key.keysym)
                         })
                     },
                     SDL_EventType::SDL_TEXTEDITING => {},
                     SDL_EventType::SDL_TEXTINPUT => {},
                     SDL_EventType::SDL_MOUSEMOTION => unsafe {
-                        self.window.dispatch_event(slint::platform::WindowEvent::PointerMoved { 
+                        self.window.dispatch_event(slint::platform::WindowEvent::PointerMoved {
                             position: LogicalPosition::new(event.motion.x as f32, event.motion.y as f32)
                         })
                     },
                     SDL_EventType::SDL_MOUSEBUTTONDOWN => unsafe {
-                        self.window.dispatch_event(slint::platform::WindowEvent::PointerPressed { 
+                        self.window.dispatch_event(slint::platform::WindowEvent::PointerPressed {
                             position: LogicalPosition::new(event.button.x as f32, event.button.y as f32),
                             button: mouse_btn(event.button.button),
                         })
                     },
                     SDL_EventType::SDL_MOUSEBUTTONUP => unsafe {
-                        self.window.dispatch_event(slint::platform::WindowEvent::PointerReleased { 
+                        self.window.dispatch_event(slint::platform::WindowEvent::PointerReleased {
                             position: LogicalPosition::new(event.button.x as f32, event.button.y as f32),
                             button: mouse_btn(event.button.button),
                         })
                     },
                     SDL_EventType::SDL_MOUSEWHEEL => unsafe {
-                        self.window.dispatch_event(slint::platform::WindowEvent::PointerScrolled { 
+                        self.window.dispatch_event(slint::platform::WindowEvent::PointerScrolled {
                             position: LogicalPosition::new(event.wheel.x as f32, event.wheel.y as f32),
                             delta_x: event.wheel.x as f32,
                             delta_y: event.wheel.y as f32,
                         })
-                    },                
+                    },
                     SDL_EventType::SDL_JOYAXISMOTION => todo!(),
                     SDL_EventType::SDL_JOYBALLMOTION => todo!(),
                     SDL_EventType::SDL_JOYHATMOTION => todo!(),
@@ -520,29 +506,29 @@ impl slint::platform::Platform for Platform {
                     SDL_EventType::SDL_CONTROLLERTOUCHPADMOTION => todo!(),
                     SDL_EventType::SDL_CONTROLLERTOUCHPADUP => todo!(),
                     SDL_EventType::SDL_CONTROLLERSENSORUPDATE => todo!(),
-                
+
                     SDL_EventType::SDL_FINGERDOWN => todo!(),
                     SDL_EventType::SDL_FINGERUP => todo!(),
                     SDL_EventType::SDL_FINGERMOTION => todo!(),
                     SDL_EventType::SDL_DOLLARGESTURE => todo!(),
                     SDL_EventType::SDL_DOLLARRECORD => todo!(),
                     SDL_EventType::SDL_MULTIGESTURE => todo!(),
-                
+
                     SDL_EventType::SDL_CLIPBOARDUPDATE => todo!(),
                     SDL_EventType::SDL_DROPFILE => todo!(),
                     SDL_EventType::SDL_DROPTEXT => todo!(),
                     SDL_EventType::SDL_DROPBEGIN => todo!(),
                     SDL_EventType::SDL_DROPCOMPLETE => todo!(),
-                
+
                     SDL_EventType::SDL_AUDIODEVICEADDED => {},
                     SDL_EventType::SDL_AUDIODEVICEREMOVED => {},
-                
+
                     SDL_EventType::SDL_RENDER_TARGETS_RESET => todo!(),
                     SDL_EventType::SDL_RENDER_DEVICE_RESET => todo!(),
-                
+
                     SDL_EventType::SDL_USEREVENT => todo!(),
                     SDL_EventType::SDL_LASTEVENT => todo!(),
-                    
+
                     SDL_EventType::SDL_LOCALECHANGED => todo!(),
                     SDL_EventType::SDL_SYSWMEVENT => todo!(),
                     SDL_EventType::SDL_KEYMAPCHANGED => todo!(),
@@ -553,9 +539,9 @@ impl slint::platform::Platform for Platform {
             if window_visible {
                 self.window.draw_if_needed(|renderer| {
                     let fb = unsafe {
-                        slice::from_raw_parts_mut(surface.pixels as *mut SlintBltPixel, surface.w as usize * surface.h as usize) 
-                    };                    
-                    //writeln!(host_stderr, "renderer: {:?}", renderer.w).ok();            
+                        slice::from_raw_parts_mut(surface.pixels as *mut SlintBltPixel, surface.w as usize * surface.h as usize)
+                    };
+                    //writeln!(host_stderr, "renderer: {:?}", renderer.w).ok();
 
                     renderer.render(fb, surface.w as usize);
                     unsafe {

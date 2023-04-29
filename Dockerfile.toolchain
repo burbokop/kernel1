@@ -17,8 +17,13 @@ RUN apt update && apt install -y \
 
 FROM rust:1.69-bookworm as tools-build
 
+RUN rustup default nightly
+
 COPY ./tools/replaceenv /opt/replaceenv
 RUN cd /opt/replaceenv && cargo build --release
+
+COPY ./tools/packttf /opt/packttf
+RUN cd /opt/packttf && cargo build --release
 
 FROM cc as binutils-build
 
@@ -73,6 +78,7 @@ RUN cd /opt && \
         --without-headers \
         --enable-interwork \
         --enable-multilib \
+        --enable-obsolete \
         --with-gmp=/usr \
         --with-mpc=/opt/local \
         --with-mpfr=/opt/local
@@ -88,9 +94,14 @@ RUN replaceenv /opt/toolchain.cmake.template > /opt/gcc-build/$PREFIX/toolchain.
 COPY ./tools/choose-qemu /opt
 RUN echo "#/bin/bash\n`/opt/choose-qemu ${TARGET}` -kernel \$1" > /opt/gcc-build/$PREFIX/runq && chmod +x /opt/gcc-build/$PREFIX/runq
 
+COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /opt/gcc-build/$PREFIX/bin/replaceenv
+COPY --from=tools-build /opt/packttf/target/release/packttf /opt/gcc-build/$PREFIX/bin/packttf
+
 RUN echo .$PREFIX/toolchain.cmake >> /opt/gcc-build/include-list.txt && \
     echo .$PREFIX/llvm-target.json >> /opt/gcc-build/include-list.txt && \
-    echo .$PREFIX/runq >> /opt/gcc-build/include-list.txt
+    echo .$PREFIX/runq >> /opt/gcc-build/include-list.txt && \
+    echo .$PREFIX/bin/replaceenv >> /opt/gcc-build/include-list.txt && \
+    echo .$PREFIX/bin/packttf >> /opt/gcc-build/include-list.txt
 
 RUN mkdir -p $PREFIX/lib && ln -s /usr/lib/checkinstall $PREFIX/lib/checkinstall
 RUN cd /opt/gcc-build && checkinstall \
@@ -170,7 +181,6 @@ RUN rustup default nightly && \
     rustup component add rust-src
 
 RUN mkdir /packages
-COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /usr/bin
 COPY --from=binutils-build /opt/binutils-build/*.deb /packages
 COPY --from=gcc-build /opt/gcc-build/*.deb /packages
 COPY --from=gdb-build /opt/gdb-build/*.deb /packages

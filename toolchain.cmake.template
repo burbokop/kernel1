@@ -33,3 +33,19 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(Rust_CARGO_TARGET $ENV{PREFIX}/llvm-target.json)
 set(CORROSION_NO_WARN_PARSE_TARGET_TRIPLE_FAILED TRUE)
 
+function(target_include_font target url size)
+    get_filename_component(name ${url} NAME)
+    include(ExternalProject)
+    ExternalProject_Add(
+        ${name}
+        PREFIX ${name}
+        URL ${url}
+        CONFIGURE_COMMAND $ENV{PREFIX}/bin/packttf -i ../archive.tar --size ${size}
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+    )
+    ExternalProject_Get_property(${name} SOURCE_DIR)
+    ExternalProject_Get_property(${name} BINARY_DIR)
+    target_include_directories(${target} PRIVATE ${BINARY_DIR})
+    add_dependencies(${target} ${name})
+endfunction()

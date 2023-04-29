@@ -265,7 +265,7 @@ void *memset(void *s, int c, size_t len)
     return s;
 }
 
-static int nputs(const char *str, size_t n)
+int nputs(const char *str, size_t n)
 {
     terminal_initialize();
     const int count = terminal_write(str, n);
