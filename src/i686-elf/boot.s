@@ -42,22 +42,22 @@ stack_top:
 _start:
     mov $stack_top, %esp
 
-    # pushing multiboot header
-    push .multiboot + 4 * 11 # MAGIC
-    push .multiboot + 4 * 10 # FLAGS
-    push .multiboot + 4 * 9  # CHECKSUM
-
-    push .multiboot + 4 * 8  # flag0
-    push .multiboot + 4 * 7  # flag1
-    push .multiboot + 4 * 6  # flag2
-    push .multiboot + 4 * 5  # flag3
-    push .multiboot + 4 * 4  # flag4
-
     # pushing graphics header
-    push .multiboot + 4 * 3  # gflag0
-    push .multiboot + 4 * 2  # width
-    push .multiboot + 4 * 1  # height
-    push .multiboot + 4 * 0  # bpp
+    push .multiboot + 4 * 11 # bpp
+    push .multiboot + 4 * 10 # height
+    push .multiboot + 4 * 9  # width
+    push .multiboot + 4 * 8  # gflag0
+
+    push .multiboot + 4 * 7  # flag4
+    push .multiboot + 4 * 6  # flag3
+    push .multiboot + 4 * 5  # flag2
+    push .multiboot + 4 * 4  # flag1
+    push .multiboot + 4 * 3  # flag0
+
+    # pushing multiboot header
+    push .multiboot + 4 * 2  # CHECKSUM
+    push .multiboot + 4 * 1  # FLAGS
+    push .multiboot + 4 * 0  # MAGIC
 
     call main
     cli

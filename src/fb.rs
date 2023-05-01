@@ -1,6 +1,7 @@
 
 use core::{ffi::c_void, mem::transmute, slice};
 
+#[derive(Debug)]
 pub struct FrameBuffer {
     data: *mut c_void,
     pitch: usize,      // len in bytes of one line

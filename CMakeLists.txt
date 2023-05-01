@@ -12,8 +12,15 @@ project(kernel1
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include(FetchContent)
 
+set(NO_STD_LINKER_FLAG
+    #-nostartfiles
+    #-nodefaultlibs #OK
+    #-nolibc #OK
+    -nostdlib
+    )
+
+include(FetchContent)
 FetchContent_Declare(
     Corrosion
     GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
@@ -21,16 +28,39 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Corrosion)
 
-if (NOT (WIN32 OR UNIX))
-    add_library(__cstd STATIC
-        ${CMAKE_CURRENT_LIST_DIR}/src/cstd.c
-        ${CMAKE_CURRENT_LIST_DIR}/src/cstd.h)
+include(ExternalProject)
+ExternalProject_Add(
+    DumbAlloc
+    GIT_REPOSITORY https://github.com/burbokop/dumb_alloc.git
+    CMAKE_ARGS
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DENABLE_TESTS=OFF
+        -DENABLE_EXAMPLES=OFF
+        -DLINK_FLAGS=${NO_STD_LINKER_FLAG}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps-install
+)
 
-    target_link_options(__cstd PUBLIC -nostdlib)
-    target_link_libraries(__cstd PUBLIC gcc)
+include_directories(${CMAKE_BINARY_DIR}/deps-install/include)
+link_directories(${CMAKE_BINARY_DIR}/deps-install/lib)
+
+add_library(fake_libc STATIC
+    ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdlib.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdlib.h)
+
+target_link_options(fake_libc PUBLIC ${NO_STD_LINKER_FLAG} -z noexecstack)
+target_link_libraries(fake_libc PUBLIC gcc dumb_alloc)
+
+if (NOT (WIN32 OR UNIX))
+    add_library(fake_libc_stdio STATIC
+        ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdio.c
+        ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdio.h)
+
+    target_link_options(fake_libc_stdio PUBLIC ${NO_STD_LINKER_FLAG} -z noexecstack)
+    target_link_libraries(fake_libc_stdio PUBLIC gcc fake_libc)
 endif()
 
 if (WIN32 OR UNIX)
+    set(ARCH_DUPLE emulator)
     set(CORROSION_FLAGS)
 else()
     set(CORROSION_FLAGS -Zbuild-std=core,alloc)
@@ -41,33 +71,52 @@ corrosion_import_crate(
     MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
     FLAGS ${CORROSION_FLAGS})
 
+# Only to be shown in IDE
+file(GLOB_RECURSE RUST_SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/*.rs")
+add_custom_target(rkernel1_files SOURCES ${RUST_SOURCES})
+add_custom_target(rkernel1_build_files SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/build.rs
+    ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
+    ${CMAKE_CURRENT_LIST_DIR}/.cargo/config.toml
+    ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
+
+
 add_executable(kernel1)
 
 target_sources(kernel1 PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp)
+    ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/panic.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/panic.h)
 target_link_libraries(kernel1 PUBLIC rkernel1)
 
-target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
 
-if (NOT (WIN32 OR UNIX))
+if (WIN32 OR UNIX)
+    #target_link_libraries(kernel1 PUBLIC  gcc)
+
+    target_link_libraries(kernel1 PUBLIC SDL2 fake_libc gcc)
+    #target_link_options(kernel1 PUBLIC -nostdlib)
+
+else()
+    target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
+
     target_sources(kernel1 PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s
-        ${CMAKE_CURRENT_LIST_DIR}/src/panic.cpp)
+        ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s)
 
-    target_link_libraries(kernel1 PUBLIC __cstd gcc)
-    target_link_options(kernel1 PUBLIC
-        -nostdlib
-        -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
+    target_link_libraries(kernel1 PUBLIC fake_libc fake_libc_stdio gcc)
 endif()
 
-add_custom_target(iso
-    ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/program
-)
+target_link_options(kernel1 PUBLIC
+    ${NO_STD_LINKER_FLAG}
+    -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
+
 
 install(TARGETS kernel1 DESTINATION bin)
 
 if (NOT (WIN32 OR UNIX))
+    add_custom_target(iso
+        ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/program
+    )
     add_custom_command(
         COMMAND bash -c "${CMAKE_CURRENT_LIST_DIR}/tools/pack ${CMAKE_BINARY_DIR}/kernel1 ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/iso/boot/grub/grub.cfg"
         COMMENT "Generating multiboot iso"

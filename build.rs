@@ -1,9 +1,3 @@
-use std::env;
-
-
-fn get_os_from_triple(triple: &str) -> Option<&str> {
-    triple.splitn(3, "-").nth(2)
-}
 
 fn main() {
     slint_build::compile_with_config(
@@ -14,19 +8,8 @@ fn main() {
     )
     .unwrap();
 
+    println!("cargo:rustc-link-arg=-nodefaultlibs");
+    println!("cargo:rustc-link-arg=-nolibc");
 
-    let target = env::var("TARGET").expect("Cargo build scripts always have TARGET");
-    if let Some(target_os) = get_os_from_triple(&target) {
-        if target_os.contains("windows") {
-            println!("cargo:rustc-link-lib=static=SDL2main");
-            //println!("cargo:rustc-link-lib=static=SDL2-static");
-            println!("cargo:rustc-link-lib=static=SDL2");
-            return;
-        } else if !target_os.contains("none") {
-            println!("cargo:rustc-link-lib=static=SDL2main");
-            println!("cargo:rustc-link-lib=static=SDL2");
-            return;
-        }
-    }
-    println!("cargo:rustc-link-lib=__cstd");
+
 }

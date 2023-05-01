@@ -52,6 +52,8 @@ RUN cd /opt/binutils-build && checkinstall --install=no --fstrans=no --pkgname=b
 
 FROM cc as gcc-build
 
+RUN apt update && apt install -y jq
+
 ARG GCC_VERSION
 
 RUN wget ftp://ftp.lip6.fr/pub/gcc/releases/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz -O /tmp/gcc.tar.gz
@@ -89,8 +91,13 @@ RUN cd /opt/gcc-build && make all-target-libgcc -j $(nproc)
 
 COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /usr/bin
 COPY ./toolchain.cmake.template /opt
-COPY ./targets/$TARGET/target.json /opt/gcc-build/$PREFIX/llvm-target.json
-RUN replaceenv /opt/toolchain.cmake.template > /opt/gcc-build/$PREFIX/toolchain.cmake
+COPY ./targets/$TARGET/target.json /opt/gcc-build/$PREFIX/target.json
+
+RUN echo `cat /opt/gcc-build/$PREFIX/target.json | jq '."llvm-target"' | tr -d '"'` > /tmp/llvm_tt
+
+RUN cp /opt/gcc-build/$PREFIX/target.json /opt/gcc-build/$PREFIX/`cat /tmp/llvm_tt`.json
+
+RUN LLVM_TARGET_TRIPLE=`cat /tmp/llvm_tt` replaceenv /opt/toolchain.cmake.template > /opt/gcc-build/$PREFIX/toolchain.cmake
 COPY ./tools/choose-qemu /opt
 RUN echo "#/bin/bash\n`/opt/choose-qemu ${TARGET}` -kernel \$1" > /opt/gcc-build/$PREFIX/runq && chmod +x /opt/gcc-build/$PREFIX/runq
 
@@ -98,7 +105,7 @@ COPY --from=tools-build /opt/replaceenv/target/release/replaceenv /opt/gcc-build
 COPY --from=tools-build /opt/packttf/target/release/packttf /opt/gcc-build/$PREFIX/bin/packttf
 
 RUN echo .$PREFIX/toolchain.cmake >> /opt/gcc-build/include-list.txt && \
-    echo .$PREFIX/llvm-target.json >> /opt/gcc-build/include-list.txt && \
+    echo .$PREFIX/`cat /tmp/llvm_tt`.json >> /opt/gcc-build/include-list.txt && \
     echo .$PREFIX/runq >> /opt/gcc-build/include-list.txt && \
     echo .$PREFIX/bin/replaceenv >> /opt/gcc-build/include-list.txt && \
     echo .$PREFIX/bin/packttf >> /opt/gcc-build/include-list.txt
@@ -117,6 +124,9 @@ RUN cd /opt/gcc-build && checkinstall \
         #install-target-libstdc++-v3
 
 FROM cc as gdb-build
+
+RUN apt update && apt install -y \
+    libexpat-dev
 
 ARG GDB_VERSION
 

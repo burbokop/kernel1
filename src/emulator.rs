@@ -4,7 +4,7 @@ use alloc::rc::Rc;
 use sdl2_sys::*;
 use slint::{platform::{software_renderer, PointerEventButton, Key}, SharedString, LogicalPosition};
 
-use crate::{cstd::Stdout, hw::{timer_freq, timer_tick}};
+use crate::{fake_libc::stdio::Stdout, hw::{timer_freq, timer_tick}};
 
 pub struct Platform {
     window: Rc<software_renderer::MinimalSoftwareWindow>,
@@ -388,7 +388,7 @@ impl slint::platform::Platform for Platform {
             SDL_Init(SDL_INIT_EVERYTHING);
 
             let window = SDL_CreateWindow(
-                "Emulator 800x600".as_ptr() as *const i8,
+                "Emulator 800x600\0".as_ptr() as *const i8,
                 SDL_WINDOWPOS_CENTERED_MASK as i32,
                 SDL_WINDOWPOS_CENTERED_MASK as i32,
                 800,
@@ -436,7 +436,7 @@ impl slint::platform::Platform for Platform {
                         match unsafe { transmute(event.window.event as u32) } {
                             SDL_WindowEventID::SDL_WINDOWEVENT_NONE => todo!(),
                             SDL_WindowEventID::SDL_WINDOWEVENT_SHOWN => window_visible = true,
-                            SDL_WindowEventID::SDL_WINDOWEVENT_HIDDEN => todo!(),
+                            SDL_WindowEventID::SDL_WINDOWEVENT_HIDDEN => window_visible = false,
                             SDL_WindowEventID::SDL_WINDOWEVENT_EXPOSED => {},
                             SDL_WindowEventID::SDL_WINDOWEVENT_MOVED => {},
                             SDL_WindowEventID::SDL_WINDOWEVENT_RESIZED => unsafe { self.resize(&mut surface, window) },
@@ -449,7 +449,7 @@ impl slint::platform::Platform for Platform {
                             SDL_WindowEventID::SDL_WINDOWEVENT_FOCUS_GAINED => {},
                             SDL_WindowEventID::SDL_WINDOWEVENT_FOCUS_LOST => {},
                             SDL_WindowEventID::SDL_WINDOWEVENT_CLOSE => should_exit = true,
-                            SDL_WindowEventID::SDL_WINDOWEVENT_TAKE_FOCUS => todo!(),
+                            SDL_WindowEventID::SDL_WINDOWEVENT_TAKE_FOCUS => {},
                             SDL_WindowEventID::SDL_WINDOWEVENT_HIT_TEST => todo!(),
                         }
                     },

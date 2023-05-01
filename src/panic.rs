@@ -27,6 +27,16 @@ impl fmt::Write for Panout {
 mod no_test {
     use core::panic::PanicInfo;
     use core::ffi::c_void;
+    //use mini_backtrace::Backtrace;
+
+    fn adjust_for_pic(ip: usize) -> usize {
+        extern "C" {
+            // Symbol defined by the linker
+            static __executable_start: [u8; 0];
+        }
+        let base = unsafe { __executable_start.as_ptr() as usize };
+        ip - base
+    }
 
     #[panic_handler]
     fn panic(info: &PanicInfo) -> ! {
@@ -36,6 +46,15 @@ mod no_test {
                 let info = &*(ctx as *const PanicInfo);
                 let mut host_stderr = super::Panout::new(handle);
                 writeln!(host_stderr, "{}", info).ok();
+
+                //let bt = Backtrace::<32>::capture();
+                //writeln!(host_stderr, "Backtrace:");
+                //for frame in bt.frames {
+                //    write!(host_stderr, "{:#x} ", adjust_for_pic(frame));
+                //}
+                //if bt.frames_omitted {
+                //    writeln!(host_stderr, " ... <frames omitted>");
+                //}
             });
         }
         loop {}

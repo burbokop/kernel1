@@ -1,8 +1,41 @@
+#include "panic.h"
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
-#include "cstd.h"
+#if defined(__linux__) || defined(_WIN32) || defined(WIN32)
+
+#include <stdio.h>
+#include <stdlib.h>
+
+struct pan
+{};
+
+void __panic__(const void *context, void (*cb)(const void *, pan *))
+{
+    pan p;
+    cb(context, &p);
+    putc('\n', stderr);
+    fflush(stderr);
+    abort();
+}
+
+void __panic_push__(pan *p, const char *message, size_t msize)
+{
+    for (size_t i = 0; i < msize; ++i) {
+        putc(message[i], stderr);
+    }
+}
+
+static void push_until_zero(pan *p, const char *message)
+{
+    for (size_t i = 0; message[i]; ++i) {
+        putc(message[i], stderr);
+    }
+}
+
+#else
+
+#include "fake_libc/fake_stdio.h"
 #include <NotoMono-Regular.h>
 
 typedef unsigned char uint8_t;
@@ -31,7 +64,7 @@ struct font
     const uint8_t *data;
 };
 
-struct panic
+struct pan
 {
     screen s;
     carriage c;
@@ -44,11 +77,6 @@ struct bitmap
     uint8_t height;
     const uint8_t *data;
 };
-
-extern "C" {
-void __panic__(const void *context, void(*cb(const void *, panic *)));
-void __panic_push__(panic *, const char *, size_t);
-}
 
 static uint8_t *vga_addr(const screen &s, int x, int y)
 {
@@ -110,8 +138,8 @@ static void append_char_to_end(screen &s, carriage &car, const font &f, char c)
     }
 }
 
-void __panic__(const void *context, void(*cb(const void *, panic *)))
-{
+void __panic__(const void *context, void (*cb)(const void *, pan *))
+{    
     /// VGA 320x200 256color Graphical mode (Only in processor's "Protected Mode")
     screen screen = {.base = reinterpret_cast<uint8_t *>(0xA0000),
                      .w = 320,
@@ -127,7 +155,7 @@ void __panic__(const void *context, void(*cb(const void *, panic *)))
                        .data = NotoMono_Regular};
 
     clear_screen(screen);
-    auto p = panic{
+    auto p = pan{
         .s = screen,
         .c = carriage,
         .f = font,
@@ -135,9 +163,31 @@ void __panic__(const void *context, void(*cb(const void *, panic *)))
     cb(context, &p);
 }
 
-void __panic_push__(panic *p, const char *message, size_t msize)
+void __panic_push__(pan *p, const char *message, size_t msize)
 {
     for (size_t i = 0; i < msize; ++i) {
+        putchar(message[i]);
         append_char_to_end(p->s, p->c, p->f, message[i]);
+    }
+}
+
+static void push_until_zero(pan *p, const char *message)
+{
+    for (size_t i = 0; message[i]; ++i) {
+        putchar(message[i]);
+        append_char_to_end(p->s, p->c, p->f, message[i]);
+    }
+}
+
+#endif
+
+void panic(const char *message)
+{
+    __panic__(message, [](const void *m, pan *p) {
+        push_until_zero(p, "paniced at '");
+        push_until_zero(p, reinterpret_cast<const char *>(m));
+        push_until_zero(p, "'");
+    });
+    while (true) {
     }
 }

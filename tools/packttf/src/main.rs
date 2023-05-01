@@ -10,7 +10,7 @@ use std::{
 };
 
 use clap::{Parser, builder::Str};
-use fontdue::Font;
+use fontdue::{Font, Metrics};
 use trim_margin::MarginTrimmable;
 use zip::ZipArchive;
 
@@ -42,7 +42,7 @@ impl From<String> for Format {
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Path to input ttf file
+    /// Path to input .ttf or .zip (will be searched for .ttf files) file
     #[arg(short, long)]
     input: String,
 
@@ -61,6 +61,14 @@ struct Args {
     /// Pixel size of glyph
     #[arg(short, long, default_value_t = 7.)]
     size: f32,
+
+    /// x offset of all glyphs (relative value from -1. to 1., positive - move down, negative - move up)
+    #[arg(short, long, default_value_t = 0.)]
+    x_offset: f32,
+
+    /// y offset of all glyphs (relative value from -1. to 1., positive - move down, negative - move up)
+    #[arg(short, long, default_value_t = -0.25)]
+    y_offset: f32,
 }
 
 fn var_name_from_file(path: PathBuf) -> Result<String, Box<dyn Error>> {
@@ -73,12 +81,28 @@ fn var_name_from_file(path: PathBuf) -> Result<String, Box<dyn Error>> {
     )
 }
 
+fn grayscale_aligned(metrics: &Metrics, bitmap: &Vec<u8>, x: usize, y: usize, offset_x: i32, offset_y: i32) -> u8 {
+    let x = x as i32 - offset_x + metrics.xmin;
+    let y = y as i32 - offset_y + metrics.ymin;
+
+    if x >= 0 && x < metrics.width as i32 && y >= 0 && y < metrics.height as i32 {
+        let x = x as usize;
+        let y = y as usize;
+        let index = x + y * metrics.width;
+        if index < bitmap.len() {
+            bitmap[index]
+        } else { 0 }
+    } else { 0 }
+}
+
 fn process(
     input: Vec<u8>,
     output: &mut impl Write,
     format: Format,
     name: String,
     size: f32,
+    x_global_offset: f32,
+    y_global_offset: f32,
     banner: String
 ) -> Result<(), Box<dyn Error>> {
     #[allow(unused_mut)]
@@ -110,37 +134,20 @@ fn process(
         },
     }
 
-    for (ascii, (metrix, bitmap)) in glyphs {
+    for (ascii, (metrics, bitmap)) in glyphs {
 
-        let offset_x = if max_w >= metrix.width { (max_w - metrix.width) / 2 } else { 0 };
-        let offset_y = if max_h >= metrix.height { (max_h - metrix.height) / 2 } else { 0 };
+        let offset_x = max_w as i32 - metrics.width as i32 + (x_global_offset * max_w as f32) as i32;
+        let offset_y = max_h as i32 - metrics.height as i32 + (y_global_offset * max_h as f32) as i32;
 
+        let w = max_w;
+        let h = max_h;
 
-        for y in 0..max_h {
+        for y in 0..h {
             write!(output, "\t")?;
-            for x in 0..max_w {
-                //println!("\twh: {}x{}, b {}x{}", metrix.width, metrix.height, metrix.bounds.width, metrix.bounds.height);
-                //println!("\t{}x{}, min {}x{}", x, y, metrix.xmin, metrix.ymin);
-                let mut o_x = x as i32;
-                let mut o_y = y as i32;
+            for x in 0..w {
+                let gc = grayscale_aligned(&metrics, &bitmap, x, y, offset_x, offset_y);
 
-                //let mut o_x = x as i32 + offset_x as i32;
-                //let mut o_y = y as i32 + offset_y as i32;
-
-                if o_x < 0 { o_x = 0 }
-                if o_y < 0 { o_y = 0 }
-
-                let o_x = o_x as usize;
-                let o_y = o_y as usize;
-
-                let index = o_x + o_y * metrix.width;
-                let gc = if x < metrix.width && y < metrix.height && index < bitmap.len() {
-                    bitmap[index]
-                } else {
-                    0
-                };
-
-                if ascii < u8::MAX - 1 || y < max_h - 1 || x < max_w - 1 {
+                if ascii < u8::MAX - 1 || y < h - 1 || x < w - 1 {
                     write!(output, "{0:<3}, ", gc)?;
                 } else {
                     write!(output, "{0:<3} ", gc)?;
@@ -245,6 +252,8 @@ fn main() {
         args.format,
         name,
         args.size,
+        args.x_offset,
+        args.y_offset,
         banner
     )
         .expect("Failed to convert");

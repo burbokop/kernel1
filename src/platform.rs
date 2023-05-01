@@ -45,20 +45,19 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
-
         {
             let surface = self.surface.borrow();
+            panic!("run_event_loop: {:?}", surface.fb());
 
             self.window.set_size(slint::PhysicalSize::new(
-                surface.fb().w() as u32,
-                surface.fb().h() as u32,
+                surface.fb().w() as u32 / 4,
+                surface.fb().h() as u32 / 4,
             ));
         }
 
         // TODO disable drawing by events for enabling text mode
         let mut drawing_enabled = true;
         let mut should_exit = false;
-
 
         while !should_exit {
             slint::platform::update_timers_and_animations();

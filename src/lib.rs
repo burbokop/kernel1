@@ -2,7 +2,7 @@
 #![no_std]
 
 extern crate alloc;
-use core::time::Duration;
+use core::{time::Duration, alloc::{GlobalAlloc, Layout}};
 
 use alloc::{boxed::Box, string::{String, ToString}, format};
 
@@ -10,7 +10,7 @@ extern crate embedded_alloc;
 use embedded_alloc::Heap;
 use slint::{Timer, TimerMode};
 
-mod cstd;
+mod fake_libc;
 mod hw;
 mod panic;
 
@@ -18,6 +18,25 @@ mod panic;
 //static GLOBAL: MyAllocator = MyAllocator;
 static HEAP: Heap = Heap::empty();
 
+/*
+#[no_mangle]
+pub extern fn malloc(size: usize) -> *mut void {
+    unsafe {
+        let mut l = Layout::from_size_align_unchecked(size, 1);
+        HEAP.alloc(l)
+    }
+}
+#[no_mangle]
+pub extern fn free(ptr: *mut void) {
+    unsafe {
+        let mut l = Layout::from_size_align_unchecked(size, 1);
+        HEAP.dealloc(l)
+    }
+}
+#[no_mangle]
+pub extern fn realloc(ptr: *mut void, new_size: usize) -> *mut void {
+
+}*/
 
 #[cfg(not(feature = "std"))] // needed for `cargo test --features std`
 mod no_std {
@@ -35,12 +54,14 @@ mod no_std {
 slint::include_modules!();
 
 
-//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod fb;
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod platform;
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod surfaces;
 
-//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 pub fn init_platform() {
     use platform::*;
     let surface = unsafe {
@@ -58,14 +79,15 @@ pub fn init_platform() {
 }
 
 pub fn diplay_slint() {
-    //init_platform();
+    init_platform();
+
 
     let ui = Demo::new().unwrap();
 
     ui.set_firmware_vendor("burbokop".to_string().into());
-    ui.set_firmware_version(
-        format!("{}.{:02}", 0, 0).into(),
-    );
+
+    ui.set_firmware_version(format!("{}.{:02}", 0, 0).into());
+
     ui.set_uefi_version("1.0.0".to_string().into());
 
     ui.set_secure_boot(false);
@@ -76,7 +98,7 @@ pub fn diplay_slint() {
         let ui = weak_ui.upgrade().unwrap();
 
         ui.set_timer_tick(hw::timer_tick() as f32);
-        ui.set_pit(hw::ttt() as f32);
+        //ui.set_pit(hw::ttt() as f32);
     });
 
     ui.run().unwrap();
@@ -111,17 +133,17 @@ pub struct multiboot_header {
 
 #[no_mangle]
 pub extern fn rust_main(header: multiboot_header) {
-
     use core::fmt::Write;
+
 
     {
         use core::mem::MaybeUninit;
-        const HEAP_SIZE: usize = 1024 * 1024;
+        const HEAP_SIZE: usize = 1024 * 1024 * 64;
         static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
 
-    let mut host_stderr = cstd::Stdout::new();
+    let mut host_stderr = fake_libc::stdio::Stdout::new();
 
     writeln!(host_stderr, "header: {:?}", header).ok();
 

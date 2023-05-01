@@ -2,7 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "cstd.h"
+#include "fake_libc/fake_stdlib.h"
+#include "panic.h"
 
 struct graphics_header
 {
@@ -29,10 +30,6 @@ struct multiboot_header
 
 extern "C" {
 void rust_main(multiboot_header header);
-size_t aaa();
-int memcmp(const void *s1, const void *s2, size_t n);
-
-void __panic__(const char *, size_t);
 }
 
 void *vga_addr(const graphics_header &graphics, int x, int y)
@@ -52,9 +49,47 @@ void set_bit(uint8_t *addr, size_t offset, bool bit)
     }
 }
 
+//uint32_t cr0()
+//{
+//    volatile uint32_t result = 0;
+//    asm("mov %%cr0, %%eax\n"
+//        "mov %%eax, %0"
+//        : "=r"(result)
+//        :);
+//    return result;
+//}
+
+#if defined(__linux__) || defined(_WIN32) || defined(WIN32)
+int main()
+{
+    multiboot_header header;
+#else
 int main(multiboot_header header)
 {
-    //puts("start");
+#endif
+    //const auto a = cr0();
+    //bool protected_mode = (a & 1);
+
+    //if (protected_mode) {
+    //    puts("Protected mode");
+    //} else {
+    //    puts("Real mode");
+    //}
+
+    //void *m1 = malloc(16);
+    //void *m2 = malloc(8);
+
+    //free(m1);
+    //free(m2);
+
+    //puts("start1");
+
+    //printf("Protected mode: %b\n", protected_mode);
+    //puts("start2");
+
+    //const auto *a = "gogadoda";
+    //__panic__(a, [](const void *a, panic *p) { __panic_push__(p, (const char *) a, 8); });
+
     //printf("m:%d, f:%d, c:%d, w:%d, h:%d, b:%d\n",
     //       header.magic,
     //       header.flags,
@@ -82,7 +117,7 @@ int main(multiboot_header header)
     //}
     rust_main(header);
 
-    memcmp(NULL, NULL, 0);
+    //memcmp(NULL, NULL, 0);
     /*
     const auto a = aaa();
 
