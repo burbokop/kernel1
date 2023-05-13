@@ -155,12 +155,14 @@ void __panic__(const void *context, void (*cb)(const void *, pan *))
                        .data = NotoMono_Regular};
 
     clear_screen(screen);
+    putchar(2);
     auto p = pan{
         .s = screen,
         .c = carriage,
         .f = font,
     };
     cb(context, &p);
+    putchar('\n');
 }
 
 void __panic_push__(pan *p, const char *message, size_t msize)

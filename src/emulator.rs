@@ -1,7 +1,7 @@
 use core::{time::Duration, slice, ptr::null, mem::{transmute, MaybeUninit}, cell::{RefCell, Cell}};
 
 use alloc::rc::Rc;
-use sdl2_sys::*;
+use mini_winclient::{winclient, socket::LOCALHOST, time::Point};
 use slint::{platform::{software_renderer, PointerEventButton, Key}, SharedString, LogicalPosition};
 
 use crate::{fake_libc::stdio::Stdout, hw::{timer_freq, timer_tick}};
@@ -13,18 +13,12 @@ pub struct Platform {
 }
 
 impl Platform {
-    fn tell_about_surface_size(&self, surface: &mut SDL_Surface) {
-        self.window.set_size(slint::PhysicalSize::new(
-            surface.w as u32,
-            surface.h as u32,
-        ));
-    }
 
-    unsafe fn resize(&self, surface: &mut &mut SDL_Surface, window: *mut SDL_Window) {
-        SDL_FreeSurface(*surface);
-        *surface = &mut *SDL_GetWindowSurface(window);
-        self.tell_about_surface_size(surface);
-    }
+    //unsafe fn resize(&self, surface: &mut &mut SDL_Surface, window: *mut SDL_Window) {
+    //    SDL_FreeSurface(*surface);
+    //    *surface = &mut *SDL_GetWindowSurface(window);
+    //    self.tell_about_surface_size(surface);
+    //}
 }
 
 impl Default for Platform {
@@ -38,7 +32,7 @@ impl Default for Platform {
         }
     }
 }
-
+/*
 fn sdlsym_to_slint(sym: SDL_Keysym) -> SharedString {
 
     let c = |c: char| -> SharedString {
@@ -307,7 +301,7 @@ fn mouse_btn(button: u8) -> PointerEventButton {
         _ => PointerEventButton::Other,
     }
 }
-
+ */
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 struct SlintBltPixel(u32);
@@ -384,42 +378,32 @@ impl slint::platform::Platform for Platform {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
-        let (mut surface, window) = unsafe {
-            SDL_Init(SDL_INIT_EVERYTHING);
+        let mut client = winclient::Client::connect(LOCALHOST, 1238).unwrap();
 
-            let window = SDL_CreateWindow(
-                "Emulator 800x600\0".as_ptr() as *const i8,
-                SDL_WINDOWPOS_CENTERED_MASK as i32,
-                SDL_WINDOWPOS_CENTERED_MASK as i32,
-                800,
-                600,
-                SDL_WindowFlags::SDL_WINDOW_RESIZABLE as u32
-            );
-            let surface = SDL_GetWindowSurface(window);
+        const W: usize = 320;
+        const H: usize = 200;
 
-            SDL_FillRect(surface, null(), 0xff006000);
-            SDL_UpdateWindowSurface(window);
-            (&mut *surface, window)
-        };
+        self.window.set_size(slint::PhysicalSize::new(
+            W as u32,
+            H as u32,
+        ));
 
-        self.tell_about_surface_size(surface);
-
-        let mut window_visible = false;
+        let mut window_visible = true;
         let mut should_exit = false;
 
         while !should_exit {
             if window_visible {
                 unsafe {
-                    let mut w: i32 = 0;
-                    let mut h: i32 = 0;
-                    SDL_GetWindowSize(window, &mut w, &mut h);
-                    if surface.w != w || surface.h != h {
-                        self.resize(&mut surface, window);
-                    }
+                    //let mut w: i32 = 0;
+                    //let mut h: i32 = 0;
+                    //SDL_GetWindowSize(window, &mut w, &mut h);
+                    //if surface.w != w || surface.h != h {
+                    //    self.resize(&mut surface, window);
+                    //}
                 }
                 slint::platform::update_timers_and_animations();
             }
-
+/*
             let mut event: SDL_Event = unsafe { MaybeUninit::uninit().assume_init() };
             while unsafe { SDL_PollEvent(&mut event as *mut SDL_Event) != 0 } {
                 match unsafe { transmute(event.type_) } {
@@ -535,29 +519,30 @@ impl slint::platform::Platform for Platform {
                     SDL_EventType::SDL_SENSORUPDATE => todo!(),
                 }
             }
-
+*/
             if window_visible {
                 self.window.draw_if_needed(|renderer| {
-                    let fb = unsafe {
-                        slice::from_raw_parts_mut(surface.pixels as *mut SlintBltPixel, surface.w as usize * surface.h as usize)
-                    };
+
+                    let mut pix: [SlintBltPixel; W * H] = [SlintBltPixel(0); W * H];
+
+                    //let fb = unsafe {
+                    //    slice::from_raw_parts_mut(surface.pixels as *mut SlintBltPixel, surface.w as usize * surface.h as usize)
+                    //};
                     //writeln!(host_stderr, "renderer: {:?}", renderer.w).ok();
 
-                    renderer.render(fb, surface.w as usize);
-                    unsafe {
-                        SDL_UpdateWindowSurface(window);
-                    }
+                    renderer.render(&mut pix, W);
+
+                    client.present(winclient::Format::ARGB, W as u16, H as u16, &pix).unwrap();
+
                 });
 
                 //if !self.window.has_active_animations() {
                 //    wait_for_input(slint::platform::duration_until_next_timer_update());
                 //}
             }
+            Point::now().loop_for(Duration::from_millis(16));
         };
-        unsafe {
-            SDL_FreeSurface(surface);
-            SDL_DestroyWindow(window);
-        }
+
         Ok(())
     }
 }

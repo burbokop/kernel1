@@ -8,7 +8,9 @@ use alloc::{boxed::Box, string::{String, ToString}, format};
 
 extern crate embedded_alloc;
 use embedded_alloc::Heap;
-use slint::{Timer, TimerMode};
+use slint::{Timer, TimerMode, platform::software_renderer::TargetPixel};
+
+use crate::{platform::Surface, surfaces::vga320x200_256c::Pixel};
 
 mod fake_libc;
 mod hw;
@@ -54,11 +56,11 @@ mod no_std {
 slint::include_modules!();
 
 
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod fb;
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod platform;
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+//#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod surfaces;
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
@@ -154,6 +156,31 @@ pub extern fn rust_main(header: multiboot_header) {
     if let Some(b) = b {
         writeln!(host_stderr, "b: {}", b.as_str()).ok();
     }
+
+/*
+    let mut surface = unsafe {
+        surfaces::vga320x200_256c::Surface::new()
+    };
+
+    let pitch = surface.fb().pitch();
+    let ss = unsafe { surface.fb_mut().as_ref_mut::<<surfaces::vga320x200_256c::Surface as platform::Surface>::Pixel>() };
+
+    for i in 0..10 {
+        ss[i] = Pixel::from_rgb(0xff, 0x00, 0xff);
+    }
+    for i in 0..10 {
+        ss[pitch * 4 + i] = Pixel::from_rgb(0xff, 0x80, 0x00);
+    }
+    for i in 0..10 {
+        ss[pitch * 8 + i] = Pixel::from_rgb(0xff, 0x00, 0x00);
+    }
+    for i in 0..10 {
+        ss[pitch * 12 + i] = Pixel::from_rgb(0x00, 0xff, 0x00);
+    }
+    for i in 0..10 {
+        ss[pitch * 16 + i] = Pixel::from_rgb(0x00, 0x00, 0xff);
+    }
+*/
     diplay_slint();
 }
 

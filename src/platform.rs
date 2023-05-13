@@ -7,7 +7,7 @@ use crate::{hw::{timer_freq, timer_tick}, fb::FrameBuffer};
 
 
 pub trait Surface {
-    type Pixel: software_renderer::TargetPixel;
+    type Pixel: software_renderer::TargetPixel + core::fmt::Debug;
 
     fn fb(&self) -> &FrameBuffer;
     fn fb_mut(&mut self) -> &mut FrameBuffer;
@@ -47,11 +47,10 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
         {
             let surface = self.surface.borrow();
-            panic!("run_event_loop: {:?}", surface.fb());
 
             self.window.set_size(slint::PhysicalSize::new(
-                surface.fb().w() as u32 / 4,
-                surface.fb().h() as u32 / 4,
+                surface.fb().w() as u32,
+                surface.fb().h() as u32,
             ));
         }
 
@@ -60,7 +59,13 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
         let mut should_exit = false;
 
         while !should_exit {
-            slint::platform::update_timers_and_animations();
+            if drawing_enabled {
+                slint::platform::update_timers_and_animations();
+            }
+
+            let b = timer_tick();
+            while timer_tick() - b < 1000 * 1000 * 1000 * 5 {}
+
 
             /* TODO
 
@@ -70,12 +75,14 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
             */
 
             if drawing_enabled {
+
                 self.window.draw_if_needed(|renderer| {
                     let mut surface = self.surface.borrow_mut();
                     let fb = surface.fb_mut();
                     let pitch = fb.pitch();
                     unsafe {
                         renderer.render(fb.as_ref_mut::<S::Pixel>(), pitch);
+                        //panic!("pitch: {:?}", fb.as_ref_mut::<u8>());
                     }
                 });
 
@@ -84,6 +91,7 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
                 //}
             }
         };
+        panic!("ended unexpectedly");
         Ok(())
     }
 }

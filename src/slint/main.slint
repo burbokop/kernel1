@@ -14,11 +14,9 @@ export component Demo inherits Window {
     in property <float> timer-tick;
     in property <float> pit;
 
-
-
     default-font-size: 22px;
     default-font-family: "Noto Sans";
-
+/*
     TabWidget {
         width: root.width;
         height: root.height;
@@ -32,6 +30,7 @@ export component Demo inherits Window {
                         colspan: 2;
                         text: "Kernel Demo";
                         horizontal-alignment: center;
+                        color: green;
                         font-size: 44px;
                         font-weight: 600;
                     }
@@ -108,5 +107,16 @@ export component Demo inherits Window {
         //        }
         //    }
         //}
+    }
+*/
+    Rectangle {
+        x: 0px;
+        y: 0px;
+        width: root.width;
+        height: root.height;
+        border-color: #ff8800;
+        border-width: 2px;
+        border-radius: 4px;
+        background: #00ff00;
     }
 }

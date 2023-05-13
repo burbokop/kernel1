@@ -68,31 +68,43 @@ char *itoa(int num, char *str, int base)
 
     return str;
 }
+extern int printf(char const *fmt, ...);
+
+static size_t aaaa = 0;
+static size_t bbbb = 0;
 
 float fminf(float x, float y)
 {
-    return x < y ? x : y;
+    float a = x < y ? x : y;
+    if (aaaa > 90)
+        printf("fminf[%d](%f, %f) = %f\n", aaaa++, x, y, a);
+    return a;
 }
 
-double fmin(double x, double y) {
-    return x < y ? x : y;
+//double fmin(double x, double y) {
+//    return x < y ? x : y;
+//}
+
+//long double fminl(long double x, long double y)
+//{
+//    return x < y ? x : y;
+//}
+
+float fmaxf(float x, float y)
+{
+    float a = x > y ? x : y;
+    if (aaaa > 90)
+        printf("fmaxf[%d](%f, %f) = %f\n", aaaa++, x, y, a);
+    return a;
 }
 
-long double fminl(long double x, long double y) {
-    return x < y ? x : y;
-}
+//double fmax(double x, double y) {
+//    return x > y ? x : y;
+//}
 
-float fmaxf(float x, float y) {
-    return x > y ? x : y;
-}
-
-double fmax(double x, double y) {
-    return x > y ? x : y;
-}
-
-long double fmaxl(long double x, long double y) {
-    return x > y ? x : y;
-}
+//long double fmaxl(long double x, long double y) {
+//    return x > y ? x : y;
+//}
 
 float floorf(float num) {
     if (num >= ((double) LLONG_MAX - 1) || num <= LLONG_MIN || num != num) {
@@ -106,41 +118,46 @@ float floorf(float num) {
         : (d - 1);
 }
 
-double floor(double num) {
-    if (num >= ((double) LLONG_MAX - 1) || num <= LLONG_MIN || num != num) {
-        // TODO handle large values, infinities and nan
-        return num;
-    }
-    long long n = (long long)num;
-    double d = (double)n;
-    return (d == num || num >= 0)
-        ? d
-        : (d - 1);
+//double floor(double num) {
+//    if (num >= ((double) LLONG_MAX - 1) || num <= LLONG_MIN || num != num) {
+//        // TODO handle large values, infinities and nan
+//        return num;
+//    }
+//    long long n = (long long)num;
+//    double d = (double)n;
+//    return (d == num || num >= 0)
+//        ? d
+//        : (d - 1);
+//}
+
+//long double floorl(long double num) {
+//    if (num >= LLONG_MAX || num <= LLONG_MIN || num != num) {
+//        // TODO handle large values, infinities and nan
+//        return num;
+//    }
+//    long long n = (long long)num;
+//    long double d = (long double)n;
+//    return (d == num || num >= 0)
+//        ? d
+//        : (d - 1);
+//}
+
+float fmodf(float x, float y)
+{
+    float a = (x - y * floorf(x / y));
+
+    printf("fmodf(%f, %f) = %f", x, y, a);
+    return a;
 }
 
-long double floorl(long double num) {
-    if (num >= LLONG_MAX || num <= LLONG_MIN || num != num) {
-        // TODO handle large values, infinities and nan
-        return num;
-    }
-    long long n = (long long)num;
-    long double d = (long double)n;
-    return (d == num || num >= 0)
-        ? d
-        : (d - 1);
-}
-
-float fmodf(float x, float y) {
-    return (x - y * floorf(x / y));
-}
-
-double fmod(double x, double y) {
-    return (x - y * floor(x / y));
-}
-
-long double fmodl(long double x, long double y) {
-    return (x - y * floorl(x / y));
-}
+//double fmod(double x, double y) {
+//    return (x - y * floor(x / y));
+//}
+//
+//long double fmodl(long double x, long double y)
+//{
+//    return (x - y * floorl(x / y));
+//}
 
 //void *memcpy(void *dest, const void *src, size_t n)
 //{
@@ -152,7 +169,7 @@ long double fmodl(long double x, long double y) {
 
 void *memmove(void *dest, const void *src, size_t n)
 {
-    char *p_dest = (char*) dest;
+    char *p_dest = (char *) dest;
     const char *p_src =( const char*)src;
     char *tmp  = (char*) malloc(sizeof(char) * n);
     if(NULL == tmp) {

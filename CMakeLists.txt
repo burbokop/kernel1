@@ -37,8 +37,7 @@ ExternalProject_Add(
         -DENABLE_TESTS=OFF
         -DENABLE_EXAMPLES=OFF
         -DLINK_FLAGS=${NO_STD_LINKER_FLAG}
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps-install
-)
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps-install)
 
 include_directories(${CMAKE_BINARY_DIR}/deps-install/include)
 link_directories(${CMAKE_BINARY_DIR}/deps-install/lib)
@@ -48,6 +47,7 @@ add_library(fake_libc STATIC
     ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdlib.h)
 
 target_link_options(fake_libc PUBLIC ${NO_STD_LINKER_FLAG} -z noexecstack)
+add_dependencies(fake_libc DumbAlloc)
 target_link_libraries(fake_libc PUBLIC gcc dumb_alloc)
 
 if (NOT (WIN32 OR UNIX))
@@ -61,15 +61,12 @@ endif()
 
 if (WIN32 OR UNIX)
     set(ARCH_DUPLE emulator)
-    set(CORROSION_FLAGS)
-else()
-    set(CORROSION_FLAGS -Zbuild-std=core,alloc)
 endif()
 
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(
     MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
-    FLAGS ${CORROSION_FLAGS})
+    FLAGS -Zbuild-std=core,alloc)
 
 # Only to be shown in IDE
 file(GLOB_RECURSE RUST_SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/*.rs")
@@ -80,35 +77,22 @@ add_custom_target(rkernel1_build_files SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/.cargo/config.toml
     ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
 
-
-add_executable(kernel1)
-
-target_sources(kernel1 PRIVATE
+add_executable(kernel1
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/panic.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/panic.h)
-target_link_libraries(kernel1 PUBLIC rkernel1)
+    ${CMAKE_CURRENT_LIST_DIR}/src/panic.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/targets/${ARCH_DUPLE}/boot.s)
 
-
-if (WIN32 OR UNIX)
-    #target_link_libraries(kernel1 PUBLIC  gcc)
-
-    target_link_libraries(kernel1 PUBLIC SDL2 fake_libc gcc)
-    #target_link_options(kernel1 PUBLIC -nostdlib)
-
-else()
-    target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
-
-    target_sources(kernel1 PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/src/${ARCH_DUPLE}/boot.s)
-
-    target_link_libraries(kernel1 PUBLIC fake_libc fake_libc_stdio gcc)
-endif()
+target_link_libraries(kernel1 PUBLIC rkernel1 fake_libc gcc)
 
 target_link_options(kernel1 PUBLIC
     ${NO_STD_LINKER_FLAG}
     -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
 
+if (NOT (WIN32 OR UNIX))
+    target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
+    target_link_libraries(kernel1 PUBLIC fake_libc_stdio)
+endif()
 
 install(TARGETS kernel1 DESTINATION bin)
 
