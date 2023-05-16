@@ -55,23 +55,17 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
         }
 
         // TODO disable drawing by events for enabling text mode
-        let mut drawing_enabled = true;
-        let mut should_exit = false;
+        let drawing_enabled = true;
+        let should_exit = false;
 
         while !should_exit {
             if drawing_enabled {
                 slint::platform::update_timers_and_animations();
             }
 
-            let b = timer_tick();
-            while timer_tick() - b < 1000 * 1000 * 1000 * 5 {}
-
-
             /* TODO
-
             while poll_event() {
             }
-
             */
 
             if drawing_enabled {
@@ -91,7 +85,6 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
                 //}
             }
         };
-        panic!("ended unexpectedly");
         Ok(())
     }
 }

@@ -60,13 +60,16 @@ if (NOT (WIN32 OR UNIX))
 endif()
 
 if (WIN32 OR UNIX)
+    set(CORROSION_PLATFORM_SPECIFIC_FLAGS --features emulator)
     set(ARCH_DUPLE emulator)
+else()
+    set(CORROSION_PLATFORM_SPECIFIC_FLAGS)
 endif()
 
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(
     MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
-    FLAGS -Zbuild-std=core,alloc)
+    FLAGS -Zbuild-std=core,alloc ${CORROSION_PLATFORM_SPECIFIC_FLAGS})
 
 # Only to be shown in IDE
 file(GLOB_RECURSE RUST_SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/*.rs")
