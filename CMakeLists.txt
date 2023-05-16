@@ -12,6 +12,11 @@ project(kernel1
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (WIN32 OR UNIX)
+    set(EMULATOR ON)
+else()
+    set(EMULATOR OFF)
+endif()
 
 set(NO_STD_LINKER_FLAG
     #-nostartfiles
@@ -50,7 +55,7 @@ target_link_options(fake_libc PUBLIC ${NO_STD_LINKER_FLAG} -z noexecstack)
 add_dependencies(fake_libc DumbAlloc)
 target_link_libraries(fake_libc PUBLIC gcc dumb_alloc)
 
-if (NOT (WIN32 OR UNIX))
+if (NOT (EMULATOR))
     add_library(fake_libc_stdio STATIC
         ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdio.c
         ${CMAKE_CURRENT_LIST_DIR}/src/fake_libc/fake_stdio.h)
@@ -59,17 +64,17 @@ if (NOT (WIN32 OR UNIX))
     target_link_libraries(fake_libc_stdio PUBLIC gcc fake_libc)
 endif()
 
-if (WIN32 OR UNIX)
-    set(CORROSION_PLATFORM_SPECIFIC_FLAGS --features emulator)
+if (EMULATOR)
+    set(CORROSION_EMULATOR_FLAGS --features emulator)
     set(ARCH_DUPLE emulator)
 else()
-    set(CORROSION_PLATFORM_SPECIFIC_FLAGS)
+    set(CORROSION_EMULATOR_FLAGS)
 endif()
 
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(
     MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/Cargo.toml
-    FLAGS -Zbuild-std=core,alloc ${CORROSION_PLATFORM_SPECIFIC_FLAGS})
+    FLAGS -Zbuild-std=core,alloc ${CORROSION_EMULATOR_FLAGS})
 
 # Only to be shown in IDE
 file(GLOB_RECURSE RUST_SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/*.rs")
@@ -92,14 +97,14 @@ target_link_options(kernel1 PUBLIC
     ${NO_STD_LINKER_FLAG}
     -T ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/linker.ld)
 
-if (NOT (WIN32 OR UNIX))
+if (NOT (EMULATOR))
     target_include_font(kernel1 "https://www.fontsquirrel.com/fonts/download/noto-mono" 14)
     target_link_libraries(kernel1 PUBLIC fake_libc_stdio)
 endif()
 
 install(TARGETS kernel1 DESTINATION bin)
 
-if (NOT (WIN32 OR UNIX))
+if (NOT (EMULATOR))
     add_custom_target(iso
         ALL
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/program
