@@ -17,7 +17,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: "Install ruby"
-          command: sudo apt-get install ruby-full
+          command: apt install ruby-full
       - run:
           name: "Build and run"
           command: "./run"
