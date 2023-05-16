@@ -155,7 +155,3 @@ pub extern fn rust_main(header: multiboot_header) {
 
     diplay_slint();
 }
-
-#[no_mangle]
-pub extern fn aaa() -> usize { 1234 }
-
