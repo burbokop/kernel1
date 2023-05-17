@@ -110,7 +110,7 @@ if (NOT (EMULATOR))
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/program
     )
     add_custom_command(
-        COMMAND bash -c "${CMAKE_CURRENT_LIST_DIR}/tools/pack ${CMAKE_BINARY_DIR}/kernel1 ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/iso/boot/grub/grub.cfg"
+        COMMAND bash ${CMAKE_CURRENT_LIST_DIR}/tools/pack ${CMAKE_BINARY_DIR}/kernel1 ${CMAKE_CURRENT_LIST_DIR}/targets/${ARCH_DUPLE}/iso/boot/grub/grub.cfg
         COMMENT "Generating multiboot iso"
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/program
         BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/program
