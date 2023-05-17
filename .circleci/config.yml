@@ -17,9 +17,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: "Install ruby"
-          command:
-            apk update
-            apk add ruby
+          command: apk update && apk add ruby
       - run:
           name: "Build and run"
           command: "./run"
