@@ -80,6 +80,7 @@ pub fn init_platform() {
 pub fn diplay_slint() {
     init_platform();
 
+    compile_error!("test error");
 
     let ui = Demo::new().unwrap();
 
