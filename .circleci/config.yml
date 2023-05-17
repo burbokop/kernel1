@@ -16,8 +16,8 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: "Install ruby"
-          command: apk update && apk add ruby
+          name: "Installing dependencies"
+          command: apk update && apk add ruby perl
       - run:
           name: "Build and run"
           command: "perl ./build.pl --target i686-elf"
