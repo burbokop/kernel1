@@ -1,5 +1,5 @@
 
-use core::{ffi::c_void, mem::transmute, slice};
+use core::{ffi::c_void, mem::{transmute, size_of}, slice};
 
 #[derive(Debug)]
 pub struct FrameBuffer {
@@ -9,6 +9,9 @@ pub struct FrameBuffer {
     w: usize,          // pixels in row
     h: usize,          // pixels in column
 }
+
+#[derive(Debug)]
+pub struct BufSizeTooSmallError;
 
 impl FrameBuffer {
     #[inline] pub fn data(&self) -> *mut c_void { self.data }
@@ -28,11 +31,31 @@ impl FrameBuffer {
         }
     }
 
+    pub fn from_raw_slice(data: &mut[u8], w: usize, h: usize, depth: usize) -> Result<Self, BufSizeTooSmallError> {
+        if data.len() >= w * h * depth / 8 {
+            Ok(Self {
+                data: data.as_mut_ptr() as *mut c_void,
+                pitch: w,
+                depth,
+                w,
+                h
+            })
+        } else {
+            Err(BufSizeTooSmallError)
+        }
+    }
+
     #[inline] pub unsafe fn pixel_addr(&mut self, x: usize, y: usize) -> *mut c_void {
         self.data.offset((self.pitch * y + self.depth * x / 8) as isize)
     }
 
-    #[inline] pub unsafe fn as_ref_mut<T>(&mut self) -> &mut [T] {
-        slice::from_raw_parts_mut(self.data as *mut T, self.depth* self.pitch as usize * self.h as usize / 8)
+    #[inline] pub fn as_ref_mut<T>(&mut self) -> &mut [T] {
+        // unsafe is reduced because all safe constructors do checks
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.data as *mut T,
+                self.depth * self.pitch as usize * self.h as usize / 8 / size_of::<T>()
+            )
+        }
     }
 }

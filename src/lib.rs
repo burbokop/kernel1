@@ -51,8 +51,6 @@ mod no_std {
     }
 }
 
-slint::include_modules!();
-
 #[cfg(not(feature = "emulator"))]
 mod fb;
 #[cfg(not(feature = "emulator"))]
@@ -77,28 +75,19 @@ pub fn init_platform() {
     slint::platform::set_platform(Box::<emulator::Platform>::default()).unwrap();
 }
 
+slint::include_modules!();
+
 pub fn diplay_slint() {
     init_platform();
 
-    compile_error!("test error");
-
     let ui = Demo::new().unwrap();
-
-    ui.set_firmware_vendor("burbokop".to_string().into());
-
-    ui.set_firmware_version(format!("{}.{:02}", 0, 0).into());
-
-    ui.set_uefi_version("1.0.0".to_string().into());
-
-    ui.set_secure_boot(false);
 
     let weak_ui = ui.as_weak();
     let timer = Timer::default();
     timer.start(TimerMode::Repeated, Duration::from_millis(35), move || {
         let ui = weak_ui.upgrade().unwrap();
 
-        ui.set_timer_tick(hw::timer_tick() as f32);
-        //ui.set_pit(hw::ttt() as f32);
+        ui.set_tick(hw::timer_tick() as f32);
     });
 
     ui.run().unwrap();

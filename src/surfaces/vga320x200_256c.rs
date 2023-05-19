@@ -1,8 +1,9 @@
-use core::mem::transmute;
+use core::{mem::{transmute, size_of}};
 
+use alloc::vec::Vec;
 use slint::platform::software_renderer::{TargetPixel, PremultipliedRgbaColor};
 
-use crate::fb::FrameBuffer;
+use crate::fb::{FrameBuffer, BufSizeTooSmallError};
 
 static palette: [u32; 256] = [
     0xff000000,
@@ -265,12 +266,45 @@ static palette: [u32; 256] = [
 
 
 
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug)]
+pub struct Pixel(u32);
+
+impl TargetPixel for Pixel {
+    fn blend(&mut self, color: PremultipliedRgbaColor) {
+        let a = (u8::MAX - color.alpha) as u16;
+
+        let alpha = (self.0 >> 24) as u8;
+        let red = (self.0 >> 16) as u8;
+        let green = (self.0 >> 8) as u8;
+        let blue = (self.0 >> 0) as u8;
+
+        let alpha = (alpha as u16 * a / 255) as u8 + color.alpha;
+        let red = (red as u16 * a / 255) as u8 + color.red;
+        let green = (green as u16 * a / 255) as u8 + color.green;
+        let blue = (blue as u16 * a / 255) as u8 + color.blue;
+        self.0 =
+            (alpha as u32) << 24 |
+            (red as u32) << 16 |
+            (green as u32) << 8 |
+            (blue as u32) << 0;
+    }
+
+    fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
+        Pixel(
+            (0xff as u32) << 24 |
+            (red as u32) << 16 |
+            (green as u32) << 8 |
+            (blue as u32) << 0
+        )
+    }
+}
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
-pub struct Pixel(u8);
+struct SecPixel(u8);
 
-impl Pixel {
+impl SecPixel {
     fn vga256c_to_argb(src: u8) -> u32 {
         palette[src as usize]
     }
@@ -284,59 +318,34 @@ impl Pixel {
         ((a as u32 + r as u32 + g as u32 + b as u32) / 4) as u8
     }
 
-    fn argb_to_vga256c(src: u32) -> u8 {
-        palette
+    fn argb_to_vga256c(src: Pixel) -> SecPixel {
+        SecPixel(palette
             .into_iter()
-            .map(|x| Self::avr_abs_diff(x, src))
+            .map(|x| Self::avr_abs_diff(x, src.0))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.cmp(b))
             .unwrap()
-            .0 as u8
+            .0 as u8)
     }
 }
 
-impl TargetPixel for Pixel {
 
-
-    fn blend(&mut self, color: PremultipliedRgbaColor) {
-        let a = (u8::MAX - color.alpha) as u16;
-
-        let argb = Self::vga256c_to_argb(self.0);
-
-        let alpha = (argb >> 24) as u8;
-        let red = (argb >> 16) as u8;
-        let green = (argb >> 8) as u8;
-        let blue = (argb >> 0) as u8;
-
-        let alpha = (alpha as u16 * a / 255) as u8 + color.alpha;
-        let red = (red as u16 * a / 255) as u8 + color.red;
-        let green = (green as u16 * a / 255) as u8 + color.green;
-        let blue = (blue as u16 * a / 255) as u8 + color.blue;
-
-        self.0 = red;
-
-        //self.0 = Self::argb_to_vga256c(
-        //    (alpha as u32) << 24 |
-        //    (red as u32) << 16 |
-        //    (green as u32) << 8 |
-        //    (blue as u32) << 0);
-    }
-
-    fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
-        Pixel(Self::argb_to_vga256c(
-            (0xff as u32) << 24 |
-            (red as u32) << 16 |
-            (green as u32) << 8 |
-            (blue as u32) << 0)
-        )
-    }
+pub struct Surface {
+    primary_fb: FrameBuffer,
+    secondary_fb: FrameBuffer,
+    buf: Vec<u8>,
 }
-
-pub struct Surface(FrameBuffer);
 
 impl Surface {
     pub unsafe fn new() -> Self {
-        Self(FrameBuffer::vga320x200_256color())
+        let mut b: Vec<u8> = Vec::with_capacity(320 * 200 * 32 / 8);
+        unsafe { b.set_len(b.capacity()); }
+
+        Self {
+            primary_fb: FrameBuffer::from_raw_slice(&mut b, 320, 200, 32).unwrap(),
+            secondary_fb: FrameBuffer::vga320x200_256color(),
+            buf: b,
+        }
     }
 }
 
@@ -344,10 +353,20 @@ impl crate::platform::Surface for Surface {
     type Pixel = Pixel;
 
     fn fb(&self) -> &crate::fb::FrameBuffer {
-        &self.0
+        &self.primary_fb
     }
 
     fn fb_mut(&mut self) -> &mut crate::fb::FrameBuffer {
-        &mut self.0
+        &mut self.primary_fb
+    }
+
+    fn flush(&mut self) {
+        let from: &mut[Pixel] = self.primary_fb.as_ref_mut();
+        let to: &mut[SecPixel] = self.secondary_fb.as_ref_mut();
+        assert_eq!(from.len(), to.len());
+
+        for (f, t) in from.iter().zip(to.iter_mut()) {
+            *t = SecPixel::argb_to_vga256c(*f)
+        }
     }
 }

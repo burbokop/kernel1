@@ -7,10 +7,11 @@ use crate::{hw::{timer_freq, timer_tick}, fb::FrameBuffer};
 
 
 pub trait Surface {
-    type Pixel: software_renderer::TargetPixel + core::fmt::Debug;
+    type Pixel: software_renderer::TargetPixel;
 
     fn fb(&self) -> &FrameBuffer;
     fn fb_mut(&mut self) -> &mut FrameBuffer;
+    fn flush(&mut self);
 }
 
 pub struct Platform<S: Surface> {
@@ -74,15 +75,18 @@ impl<S: Surface> slint::platform::Platform for Platform<S> {
                     let mut surface = self.surface.borrow_mut();
                     let fb = surface.fb_mut();
                     let pitch = fb.pitch();
-                    unsafe {
-                        renderer.render(fb.as_ref_mut::<S::Pixel>(), pitch);
-                        //panic!("pitch: {:?}", fb.as_ref_mut::<u8>());
-                    }
+                    renderer.render(fb.as_ref_mut::<S::Pixel>(), pitch);
+                    surface.flush();
                 });
 
                 //if !self.window.has_active_animations() {
                 //    wait_for_input(slint::platform::duration_until_next_timer_update());
                 //}
+            }
+
+            let tt = timer_tick();
+            while timer_tick() - tt < 100_000_000 {
+
             }
         };
         Ok(())
