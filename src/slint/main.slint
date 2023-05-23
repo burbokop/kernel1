@@ -4,6 +4,10 @@ import {
     VerticalBox
 } from "std-widgets.slint";
 
+component TestNativeComponent {
+
+}
+
 component TextRow {
     in property <string> name;
     in property <string> value;
@@ -51,15 +55,29 @@ export component Demo inherits Window {
         background: #29bba7;
     }
 
-    Image {
-        padding-bottom: 20px;
-        source: @image-url("assets/img/bananas.svg");
-        height: 80px;
+    VerticalLayout {
+        Rectangle {
+            padding-left: 100px;
+            border-color: #8800ff;
+            border-width: 2px;
+            background: #ffbba7;
+            Image {
+                padding-bottom: 20px;
+                source: @image-url("assets/img/bananas.svg");
+                height: 80px;
+            }
+
+        }
+
+        //alignment: stretch;
+        Text {
+            text: "AA";//"Ticks: \{root.tick}";
+            color: #ffffff;
+        }
     }
 
-    Text {
-        text: "Ticks: \{root.tick}";
-        color: #ffffff;
+    TestNativeComponent {
+
     }
 
     //TODO

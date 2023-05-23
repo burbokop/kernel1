@@ -12,7 +12,7 @@ async fn download(url: &str, dst: &str) {
 
 #[tokio::main]
 async fn main() {
-    download("https://upload.wikimedia.org/wikipedia/commons/f/f7/Bananas.svg", "assets/img/bananas.svg").await;
+    download("https://icons-for-free.com/download-icon-color-morty-131994932365050617_0.svg", "assets/img/bananas.svg").await;
 
     slint_build::compile_with_config(
         "src/slint/main.slint",
@@ -21,9 +21,4 @@ async fn main() {
             .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer),
     )
     .unwrap();
-
-    println!("cargo:rustc-link-arg=-nodefaultlibs");
-    println!("cargo:rustc-link-arg=-nolibc");
-
-
 }

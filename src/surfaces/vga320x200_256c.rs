@@ -302,9 +302,9 @@ impl TargetPixel for Pixel {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
-struct SecPixel(u8);
+pub struct VgaPixel(u8);
 
-impl SecPixel {
+impl VgaPixel {
     fn vga256c_to_argb(src: u8) -> u32 {
         palette[src as usize]
     }
@@ -318,8 +318,8 @@ impl SecPixel {
         ((a as u32 + r as u32 + g as u32 + b as u32) / 4) as u8
     }
 
-    fn argb_to_vga256c(src: Pixel) -> SecPixel {
-        SecPixel(palette
+    fn argb_to_vga256c(src: Pixel) -> VgaPixel {
+        VgaPixel(palette
             .into_iter()
             .map(|x| Self::avr_abs_diff(x, src.0))
             .enumerate()
@@ -338,12 +338,16 @@ pub struct Surface {
 
 impl Surface {
     pub unsafe fn new() -> Self {
-        let mut b: Vec<u8> = Vec::with_capacity(320 * 200 * 32 / 8);
+        Self::from_fb(FrameBuffer::vga320x200_256color())
+    }
+
+    pub fn from_fb(fb: FrameBuffer) -> Self {
+        let mut b: Vec<u8> = Vec::with_capacity(fb.w() * fb.h() * 32 / 8);
         unsafe { b.set_len(b.capacity()); }
 
         Self {
-            primary_fb: FrameBuffer::from_raw_slice(&mut b, 320, 200, 32).unwrap(),
-            secondary_fb: FrameBuffer::vga320x200_256color(),
+            primary_fb: FrameBuffer::from_raw_slice(&mut b, fb.w(), fb.h(), 32).unwrap(),
+            secondary_fb: fb,
             buf: b,
         }
     }
@@ -362,11 +366,11 @@ impl crate::platform::Surface for Surface {
 
     fn flush(&mut self) {
         let from: &mut[Pixel] = self.primary_fb.as_ref_mut();
-        let to: &mut[SecPixel] = self.secondary_fb.as_ref_mut();
+        let to: &mut[VgaPixel] = self.secondary_fb.as_ref_mut();
         assert_eq!(from.len(), to.len());
 
         for (f, t) in from.iter().zip(to.iter_mut()) {
-            *t = SecPixel::argb_to_vga256c(*f)
+            *t = VgaPixel::argb_to_vga256c(*f)
         }
     }
 }

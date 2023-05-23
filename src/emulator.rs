@@ -8,10 +8,10 @@ use alloc::{
 use mini_winclient::{winclient, socket::LOCALHOST, time::Point};
 use slint::platform::software_renderer;
 
-use crate::hw::{
+use crate::{hw::{
     timer_freq,
     timer_tick
-};
+}, surfaces::vga320x200_256c, fb::FrameBuffer, platform::Surface};
 
 pub struct Platform {
     window: Rc<software_renderer::MinimalSoftwareWindow>,
@@ -385,12 +385,20 @@ impl slint::platform::Platform for Platform {
                 let h = self.window.size().height as usize;
 
                 self.window.draw_if_needed(|renderer| {
-                    let mut pix: Vec<SlintBltPixel> = Vec::with_capacity(w * h);
+                    let mut pix: Vec<u8> = Vec::with_capacity(w * h);
                     unsafe { pix.set_len(w * h); }
 
-                    renderer.render(&mut pix, w);
+                    {
+                        let vga_fb = FrameBuffer::from_raw_slice(&mut pix, w, h, 8).unwrap();
+                        let mut surface = vga320x200_256c::Surface::from_fb(vga_fb);
 
-                    client.present(winclient::Format::ARGB, w as u16, h as u16, &pix).unwrap();
+                        let argb_fb = surface.fb_mut();
+                        let pitch = argb_fb.pitch();
+                        renderer.render(&mut argb_fb.as_ref_mut::<<vga320x200_256c::Surface as Surface>::Pixel>(), w);
+                        surface.flush();
+                    }
+
+                    client.present(winclient::Format::VGA, w as u16, h as u16, &pix).unwrap();
                 });
 
                 if !self.window.has_active_animations() {

@@ -2,17 +2,29 @@
 #![no_std]
 
 extern crate alloc;
-use core::time::Duration;
+use core::{time::Duration, mem::transmute};
 
-use alloc::{boxed::Box, string::{String, ToString}, format};
+use alloc::{
+    boxed::Box,
+    string::String
+};
 
 extern crate embedded_alloc;
 use embedded_alloc::Heap;
-use slint::{Timer, TimerMode};
+use logimpl::emulated;
+
+use crate::logimpl::serial::Logger;
+use slint::{
+    Timer,
+    TimerMode
+};
+
+use crate::hw::serial;
 
 mod fake_libc;
 mod hw;
 mod panic;
+mod logimpl;
 
 #[global_allocator]
 //static GLOBAL: MyAllocator = MyAllocator;
@@ -51,11 +63,8 @@ mod no_std {
     }
 }
 
-#[cfg(not(feature = "emulator"))]
 mod fb;
-#[cfg(not(feature = "emulator"))]
 mod platform;
-#[cfg(not(feature = "emulator"))]
 mod surfaces;
 
 #[cfg(not(feature = "emulator"))]
@@ -95,7 +104,7 @@ pub fn diplay_slint() {
 
 #[derive(Debug)]
 #[repr(C, align(4))]
-pub struct graphics_header {
+pub struct GraphicsHeader {
     flag0: u32,
     w: u32,
     h: u32,
@@ -104,7 +113,7 @@ pub struct graphics_header {
 
 #[derive(Debug)]
 #[repr(C, align(4))]
-pub struct multiboot_header {
+pub struct MultibootHeader {
     magic: u32,
     flags: u32,
     checksum: u32,
@@ -115,13 +124,19 @@ pub struct multiboot_header {
     flag3: u32,
     flag4: u32,
 
-    graphics: graphics_header,
+    graphics: GraphicsHeader,
 }
 
+struct R<'a>(pub &'a Logger);
+unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
+    transmute::<R<'b>, R<'static>>(r)
+}
 
+#[cfg(feature = "emulator")]
+static emulated_logger: emulated::Logger = emulated::Logger;
 
 #[no_mangle]
-pub extern fn rust_main(header: multiboot_header) {
+pub extern fn rust_main(header: MultibootHeader) {
     use core::fmt::Write;
 
     {
@@ -130,6 +145,17 @@ pub extern fn rust_main(header: multiboot_header) {
         static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
+
+    #[cfg(not(feature = "emulator"))]
+    let logger: Logger = Logger::new(serial::Port::COM1).unwrap();
+    #[cfg(not(feature = "emulator"))]
+    unsafe { extend_lifetime(R(&logger)).0.init().unwrap() };
+
+    #[cfg(feature = "emulator")]
+    emulated_logger.init().unwrap();
+
+    log::debug!("debug: gogadoda");
+
 
     let mut host_stderr = fake_libc::stdio::Stdout::new();
 
