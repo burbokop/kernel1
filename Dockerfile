@@ -1,6 +1,9 @@
 ARG TARGET
 FROM kernel-toolchain:$TARGET as kernel-build
 
+RUN apt update && apt install -y \
+    libssl-dev
+
 COPY . /opt/kernel
 
 RUN cd /opt && \
