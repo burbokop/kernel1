@@ -30,6 +30,37 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
-set(Rust_CARGO_TARGET $ENV{PREFIX}/llvm-target.json)
+set(Rust_CARGO_TARGET $ENV{PREFIX}/$ENV{LLVM_TARGET_TRIPLE}.json)
 set(CORROSION_NO_WARN_PARSE_TARGET_TRIPLE_FAILED TRUE)
 
+function(target_include_font target url size)
+    get_filename_component(name ${url} NAME)
+    include(ExternalProject)
+    ExternalProject_Add(
+        ${name}
+        PREFIX ${name}
+        URL ${url}
+        CONFIGURE_COMMAND $ENV{PREFIX}/bin/packttf -i ../archive.tar --size ${size}
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+    )
+    ExternalProject_Get_property(${name} SOURCE_DIR)
+    ExternalProject_Get_property(${name} BINARY_DIR)
+    target_include_directories(${target} PRIVATE ${BINARY_DIR})
+    add_dependencies(${target} ${name})
+endfunction()
+
+function(download_file TARGET_VAR url)
+    string(MD5 url_hash ${url})
+    get_filename_component(url_file_name ${url} NAME)
+    string(APPEND name ${url_file_name} "_" ${url_hash})
+    include(FetchContent)
+    FetchContent_Declare(download_${name}
+        URL ${url}
+        DOWNLOAD_NO_EXTRACT true
+        TLS_VERIFY true
+    )
+
+    FetchContent_Populate(download_${name})
+    set(${TARGET_VAR} "${download_${name}_SOURCE_DIR}/${url_file_name}" PARENT_SCOPE)
+endfunction(download_file)

@@ -34,8 +34,9 @@ fi
 
 binname="$(basename -- $1)"
 bindir="$(dirname -- $1)"
+nude_binname="${binname%.*}"
 
 mkdir -p $bindir/isodir/boot/grub
-cp $1 $bindir/isodir/boot/$binname
+cp $1 $bindir/isodir/boot/kernel.bin
 cp $2 $bindir/isodir/boot/grub/grub.cfg
-grub-mkrescue -o $bindir/kernel.iso $bindir/isodir
+grub-mkrescue -o $bindir/$nude_binname.iso $bindir/isodir

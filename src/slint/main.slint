@@ -1,130 +1,101 @@
-// Copyright © SixtyFPS GmbH <info@slint-ui.com>
-// SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-commercial
-
 import {
-    AboutSlint, Button, GridBox, HorizontalBox, LineEdit, Slider,
-    StandardButton, StandardListView, TabWidget, VerticalBox
+    AboutSlint,
+    HorizontalBox,
+    VerticalBox
 } from "std-widgets.slint";
 
-export component Demo inherits Window {
-    in property <string> firmware-vendor;
-    in property <string> firmware-version;
-    in property <string> uefi-version;
-    in property <bool> secure-boot;
-    in property <float> timer-tick;
-    in property <float> pit;
+component TestNativeComponent {
 
-    
+}
+
+component TextRow {
+    in property <string> name;
+    in property <string> value;
+
+    in property <bool> top-separator: false;
+    in property <bool> bottom-separator: true;
+
+    VerticalBox {
+        spacing: 0px;
+        padding: 0px;
+        if root.top-separator : Rectangle {
+            height: 1px;
+            background: #cecace;
+        }
+        HorizontalBox {
+            spacing: 0px;
+            Text {
+                text: root.name;
+                horizontal-alignment: left;
+            }
+            Text {
+                text: root.value;
+                color: #888888;
+                horizontal-alignment: left;
+            }
+        }
+        if root.bottom-separator : Rectangle {
+            height: 1px;
+            background: #cecace;
+        }
+    }
+}
+
+export component Demo inherits Window {
+    in property <float> miliseconds;
+    in property <float> tick;
 
     default-font-size: 22px;
     default-font-family: "Noto Sans";
 
-    TabWidget {
-        width: root.width;
-        height: root.height;
+    Rectangle {
+        padding-left: 100px;
+        border-color: #8800ff;
+        border-width: 2px;
+        background: #29bba7;
+    }
 
-        Tab {
-            title: "Info";
-            GridBox {
-                Row { Rectangle {} }
-                Row {
-                    Text {
-                        colspan: 2;
-                        text: "Kernel Demo";
-                        horizontal-alignment: center;
-                        font-size: 44px;
-                        font-weight: 600;
-                    }
-                }
-                Row {
-                    HorizontalLayout {
-                        colspan: 2;
-                        alignment: center;
-                        AboutSlint {
-                            width: 256px;
-                        }
-                    }
-                }
-                Row {
-                    Text { text: "Firmware vendor:"; horizontal-alignment: right;  }
-                    Text { text: firmware-vendor; }
-                }
-                Row {
-                    Text { text: "Firmware version:"; horizontal-alignment: right; }
-                    Text { text: firmware-version; }
-                }
-                Row {
-                    Text { text: "UEFI version:"; horizontal-alignment: right; }
-                    Text { text: uefi-version; }
-                }
-                Row {
-                    Text { text: "Secure boot:"; horizontal-alignment: right; }
-                    Text { text: secure-boot ? "enabled" : "disabled"; }
-                }
-                Row {
-                    Text { text: "Resolution:"; horizontal-alignment: right; }
-                    Text { text: "\{floor(root.width / 1px)}x\{floor(root.height / 1px)}"; }
-                }
-                Row {
-                    Text { text: "PIT:"; horizontal-alignment: right; }
-                    Text { text: pit; }
-                }                
-                Row {
-                    Text { text: "Tick:"; horizontal-alignment: right; }
-                    Text { text: timer-tick; }
-                }                
-                Row { Rectangle {} }
+    VerticalLayout {
+        Rectangle {
+            padding-left: 100px;
+            border-color: #8800ff;
+            border-width: 2px;
+            background: #ffbba7;
+            Image {
+                padding-bottom: 20px;
+                source: @image-url("assets/img/candy.svg");
+                height: 80px;
             }
+
         }
 
-        Tab {
-            title: "Widgets";
-            VerticalBox {
-                enabler := Button {
-                    checked: true;
-                    checkable: true;
-                    text: "Widgets enabled";
-                }
-                LineEdit {
-                    enabled: enabler.checked;
-                    placeholder-text: "Edit Me!";
-                }
-                Slider {
-                    enabled: enabler.checked;
-                }
-                StandardListView {
-                    vertical-stretch: 1;
-                    enabled: enabler.checked;
-                    model: [
-                        { text: "Abydos"}, { text: "Asuras" }, { text: "Athos" },
-                        { text: "Celestis" }, { text: "Chulak"}, { text: "Dakara"},
-                        { text: "Earth" }, { text: "Langara" },  { text: "Tollana"},
-                    ];
-                }
-                HorizontalBox {
-                    alignment: center;
-                    StandardButton { enabled: enabler.checked; kind: ok; }
-                    StandardButton { enabled: enabler.checked; kind: reset; }
-                    StandardButton { enabled: enabler.checked; kind: abort; }
-                }
-            }
-        }
-
-        Tab {
-            title: "V-Sync";
-            Rectangle {
-                for color[index] in [
-                        #fff, #f00, #0f0,
-                        #00f, #0ff, #ff0,
-                        #f0f]: Rectangle {
-                    y: 0;
-                    height: parent.height;
-                    x: (parent.width - self.width) * 0.5 *
-                       (1 + 1.1 * sin(animation-tick() * (index + 1) / 17ms * 1deg));
-                    width: 25px + 100px * abs(sin(animation-tick() / 25ms * 1deg));
-                    background: color;
-                }
-            }
+        //alignment: stretch;
+        Text {
+            text: "AA";//"Ticks: \{root.tick}";
+            color: #ffffff;
         }
     }
+
+    TestNativeComponent {
+
+    }
+
+    //TODO
+    //VerticalLayout {
+    //    padding: 2px;
+    //    Image {
+    //        padding-bottom: 20px;
+    //        source: @image-url("/home/borys/projects/cpp/Bananas.svg");
+    //        height: 80px;
+    //    }
+    //    TextRow {
+    //        name: "Time:";
+    //        value: root.miliseconds;
+    //        top-separator: true;
+    //    }
+    //    TextRow {
+    //        name: "Ticks:";
+    //        value: root.tick;
+    //    }
+    //}
 }

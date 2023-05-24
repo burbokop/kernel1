@@ -1,6 +1,9 @@
 ARG TARGET
 FROM kernel-toolchain:$TARGET as kernel-build
 
+RUN apt update && apt install -y \
+    libssl-dev
+
 COPY . /opt/kernel
 
 RUN cd /opt && \
@@ -17,17 +20,18 @@ FROM debian:bookworm as kernel
 
 RUN apt update && apt install -y \
     qemu-system-x86 \
-    dbus-x11
+    dbus-x11 \
+    genisoimage
 
 COPY ./tools/choose-qemu /opt/qemu
-COPY --from=kernel-build /tmp/binutils*.deb /tmp
+COPY --from=kernel-build /packages/binutils*.deb /tmp
 COPY --from=kernel-build /opt/kernel-build/*.deb /tmp
 RUN dpkg -i /tmp/*.deb
 RUN  dbus-uuidgen > /etc/machine-id
 
 ARG TARGET
 
-RUN echo `/opt/qemu ${TARGET}` -kernel /bin/kernel1 > /run-qemu
+RUN echo `/opt/qemu ${TARGET}` -cdrom /bin/kernel1.iso -d cpu_reset -monitor stdio > /run-qemu
 RUN chmod +x /run-qemu
 
-CMD /run-qemu
+CMD isoinfo -l -i /bin/kernel1.iso && /run-qemu

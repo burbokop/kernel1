@@ -1,4 +1,7 @@
 
+pub mod port;
+pub mod serial;
+
 pub fn timer_tick() -> u64 {
     #[cfg(target_arch = "x86")]
     unsafe {
@@ -20,21 +23,21 @@ pub fn timer_tick() -> u64 {
 /*
 unsigned read_pit_count(void) {
 	unsigned count = 0;
- 
+
 	// Disable interrupts
 	cli();
- 
+
 	// al = channel in bits 6 and 7, remaining bits clear
 	outb(0x43,0b0000000);
- 
+
 	count = inb(0x40);		// Low byte
 	count |= inb(0x40)<<8;		// High byte
- 
+
 	return count;
 }
  */
 pub fn ttt() -> u64 {
-    /* 
+    /*
     unsafe {
         let mut aa: u8;
         core::arch::asm!(
@@ -68,9 +71,9 @@ pub fn timer_freq() -> u64 {
                 jz   detect_end         ; no ?, go to detect_end
                 ;wait until the timer interrupt has been called.
                 mov  ebx, ~[irq0_count]
- 
+
             ;__wait_irq0__:
- 
+
                 cmp  ebx, ~[irq0_count]
                 jz   wait_irq0
                 rdtsc                   ; read time stamp counter
@@ -79,9 +82,9 @@ pub fn timer_freq() -> u64 {
                 add  ebx, 2             ; Set time delay value ticks.
                 ; remember: so far ebx = ~[irq0]-1, so the next tick is
                 ; two steps ahead of the current ebx ;)
- 
+
             ;__wait_for_elapsed_ticks__:
- 
+
                 cmp  ebx, ~[irq0_count] ; Have we hit the delay?
                 jnz  wait_for_elapsed_ticks
                 rdtsc
